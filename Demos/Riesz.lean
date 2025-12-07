@@ -44,7 +44,7 @@ lemma existe_point_loin_de_sousmodule
   obtain ⟨x, x_pas_dans_F⟩ := hF
   let d := infDist x F
   have hFn : (F : Set E).Nonempty := ⟨0, F.zero_mem⟩
-  have d_pos : 0 < d := (IsClosed.not_mem_iff_infDist_pos hFc hFn).1 x_pas_dans_F
+  have d_pos : 0 < d := (IsClosed.notMem_iff_infDist_pos hFc hFn).1 x_pas_dans_F
   obtain ⟨y₀, hy₀F, hxy₀⟩ : ∃ y ∈ F, dist x y < 2 * d := by
     apply (infDist_lt_iff hFn).1
     exact lt_two_mul_self d_pos
@@ -119,7 +119,7 @@ theorem ma_version_de_riesz (h : IsCompact (closedBall (0 : E) 2)) :
   apply lt_irrefl (1 : ℝ)
   calc
   1 ≤ dist (u (φ (N+1))) (u (φ N)) := by
-    simp only [dist_eq_norm, ← smul_sub, norm_smul]
+    simp only [dist_eq_norm]
     apply u_far
     exact (φmono (Nat.lt_succ_self N)).ne
   _ < 1 := hN (N+1) (Nat.le_succ N)
@@ -130,7 +130,7 @@ informelle. C'est assez typique. -/
 theorem la_vraie_version_de_riesz
     (𝕜 : Type*) [NontriviallyNormedField 𝕜] {F : Type*} [NormedAddCommGroup F]
     [NormedSpace 𝕜 F] [CompleteSpace 𝕜] {r : ℝ}
-    (r_pos : 0 < r)  {c : F} (hc : IsCompact (closedBall c r)) :
+    (r_pos : 0 < r) {c : F} (hc : IsCompact (closedBall c r)) :
     FiniteDimensional 𝕜 F :=
   .of_isCompact_closedBall 𝕜 r_pos hc
 -- by exact?

@@ -30,10 +30,10 @@ lemma vrai_mais_trivial (X : Type*) (f : X → X) [Finite X] [h : Nonempty X] :
 lemma vrai_et_moins_trivial (X : Type*) (f : X → X) [Finite X] [h : Nonempty X] :
     ∃ (x : X), ∃ (n : ℕ), 0 < n ∧ f^[n] x = x := by
   obtain ⟨x₀⟩ := h
-  have : ¬ (Injective (fun n ↦ f^[n] x₀)) := by
-    exact not_injective_infinite_finite (fun n ↦ f^[n] x₀)
-  have : ∃ k l, k ≠ l ∧ f^[k] x₀ = f^[l] x₀ := by
-    exact Finite.exists_ne_map_eq_of_infinite (fun n ↦ f^[n] x₀)
+  have : ¬ (Injective (fun n ↦ f^[n] x₀)) :=
+    not_injective_infinite_finite (fun n ↦ f^[n] x₀)
+  have : ∃ k l, k ≠ l ∧ f^[k] x₀ = f^[l] x₀ :=
+    Finite.exists_ne_map_eq_of_infinite (fun n ↦ f^[n] x₀)
   obtain ⟨k, l, hkl : k ≠ l, h : f^[k] x₀ = f^[l] x₀⟩ := this
   have : (k < l) ∨ (l < k) := Nat.lt_or_lt_of_ne hkl
   rcases this with hkl | hlk
