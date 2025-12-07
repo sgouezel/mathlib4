@@ -10,7 +10,7 @@ import Mathlib
 -/
 
 noncomputable section
-open Filter Function
+open Filter Function Metric
 open scoped Topology
 
 variable {α β : Type*} [MetricSpace α] [MetricSpace β]
@@ -21,10 +21,10 @@ lemma exists_high_score (u : ℕ → ℝ) (hu : Tendsto u atTop atTop) (N : ℕ)
   let M := (Finset.image u (Finset.range (N+1))).max' (by simp)
   have A n : u n ≤ M := by
     induction n using Nat.strong_induction_on with | h n ih =>
-      rcases le_total n N with hnN|hNn
-      · apply Finset.le_max'
-        grind
-      · grind
+    rcases le_total n N with hnN|hNn
+    · apply Finset.le_max'
+      grind
+    · grind
   obtain ⟨n, hn⟩ : ∃ n, M + 1 ≤ u n := (tendsto_atTop.mp hu (M + 1)).exists
   grind
 
@@ -47,9 +47,6 @@ lemma iterate {f : α → α} (h : semicontraction f) (n : ℕ) :
 
 
 variable {E : Type*} [NormedAddCommGroup E]
-  -- [NormedSpace ℝ E]
-  [InnerProductSpace ℝ E]
-  [FiniteDimensional ℝ E]
   {f : E → E} (h : semicontraction f)
 include h
 
@@ -91,6 +88,10 @@ lemma tendsto_sub_atTop {w : ℝ} (hw : w < h.l) :
   filter_upwards [Ioi_mem_atTop 0] with n (hn : 0 < n)
   field_simp
 
+variable
+  -- [NormedSpace ℝ E]
+  [InnerProductSpace ℝ E]
+
 lemma exists_dual_up_to_of_lt {w : ℝ} (hw : w < h.l) (N : ℕ) :
     ∃ (v : StrongDual ℝ E), ‖v‖ ≤ 1 ∧ ∀ i ≤ N, v (f^[i] 0) ≤ - i * w := by
   obtain ⟨n, Nn, hn⟩ : ∃ n ≥ N, ∀ m ≤ n, u m - m * w ≤ u n - n * w :=
@@ -116,7 +117,7 @@ lemma exists_dual_up_to_of_lt {w : ℝ} (hw : w < h.l) (N : ℕ) :
   _ ≤ - n * w + (n - i : ℕ) * w := by linarith [hn (n-i) (Nat.sub_le n i)]
   _ = - i * w := by rw [Nat.cast_sub A]; ring
 
-open Metric
+variable [FiniteDimensional ℝ E]
 
 -- NB : pourquoi a-t-on juste `‖v‖ ≤ 1` ici, et pas `‖v‖ = 1`?
 lemma exists_dual : ∃ (v : StrongDual ℝ E), ‖v‖ ≤ 1 ∧ ∀ i, v (f^[i] 0) ≤ -i * h.l := by
@@ -135,123 +136,103 @@ lemma exists_dual : ∃ (v : StrongDual ℝ E), ‖v‖ ≤ 1 ∧ ∀ i, v (f^[i
     ∃ v ∈ closedBall (0 : StrongDual ℝ E) 1, ∃ (φ : ℕ → ℕ),
       StrictMono φ ∧ Tendsto (y ∘ φ) atTop (𝓝 v) := by
     -- dual ℝ E est propre
-    refine is_compact.tendsto_subseq (proper_space.is_compact_closed_ball _ _) _,
-    assume n,
+    refine IsCompact.tendsto_subseq (ProperSpace.isCompact_closedBall _ _) ?_
+    intro n
     simp [(hy n).1]
   -- on va voir que cette limite convient.
-  refine ⟨v, by simpa using v_mem, λ i, _⟩,
+  refine ⟨v, by simpa using v_mem, fun i ↦ ?_⟩
   -- on a fixé `i`, il faut voir que `v (f^[i] 0) ≤ -i h.l`.
   -- Pour cela, on passe à la limite
   -- dans les inégalités sur les `y_n (f^[i] 0)`.
-  have A : tendsto (fun n ↦ ((y ∘ φ) n) (f^[i] 0)) atTop (𝓝 (v (f^[i] 0))) :=
-    ((is_bounded_bilinear_map_apply.is_bounded_linear_map_left (f^[i] 0))
-      .continuous.tendsto _).comp φlim,
-  have B : tendsto (fun n ↦ -(i : ℝ) * w (φ n)) atTop (𝓝 (- i * h.l)) :=
-    (tendsto_const_nhds.mul w_lim).comp φ_mono.tendsto_atTop,
-  have C : ∀ᶠ n in atTop, ((y ∘ φ) n) (f^[i] 0) ≤ - i * w (φ n),
-  { apply eventually_atTop.2 ⟨i, λ n hn, _⟩,
-    apply (hy (φ n)).2 i,
-    exact le_trans hn (φ_mono.id_le n) },
+  have A : Tendsto (fun n ↦ ((y ∘ φ) n) (f^[i] 0)) atTop (𝓝 (v (f^[i] 0))) :=
+    ((isBoundedBilinearMap_apply.isBoundedLinearMap_left (f^[i] 0)).continuous.tendsto _).comp φlim
+  have B : Tendsto (fun n ↦ -(i : ℝ) * w (φ n)) atTop (𝓝 (- i * h.l)) :=
+    (tendsto_const_nhds.mul w_lim).comp φ_mono.tendsto_atTop
+  have C : ∀ᶠ n in atTop, ((y ∘ φ) n) (f^[i] 0) ≤ - i * w (φ n) := by
+    apply eventually_atTop.2 ⟨i, fun n hn ↦ ?_⟩
+    apply (hy (φ n)).2 i
+    exact le_trans hn (φ_mono.id_le n)
   exact le_of_tendsto_of_tendsto A B C
-end
+
+open scoped RealInnerProductSpace
 
 -- on convertit l'existence d'une bonne forme linéaire en celle d'un bon
 -- vecteur, car on est sur un espace euclidien.
 lemma exists_asymp_vector :
-  ∃ (v : E), ‖v‖ ≤ 1 ∧ ∀ (i : ℕ), (i : ℝ) * h.l ≤ ⟪v, (f^[i] 0)⟫ :=
-begin
+    ∃ (v : E), ‖v‖ ≤ 1 ∧ ∀ (i : ℕ), (i : ℝ) * h.l ≤ ⟪v, (f^[i] 0)⟫ := by
   obtain ⟨v', v'_norm, hv'⟩ :
-    ∃ (v' : dual ℝ E), ‖v'‖ ≤ 1 ∧ ∀ i, v' (f^[i] 0) ≤ -i * h.l :=
-      h.exists_dual,
+    ∃ (v' : StrongDual ℝ E), ‖v'‖ ≤ 1 ∧ ∀ i, v' (f^[i] 0) ≤ -i * h.l :=
+      h.exists_dual
   -- (marcherait sur un espace complet, pas besoin de dimension finie ici).
-  let v := (inner_product_space.to_dual ℝ E).symm (-v'),
-  refine ⟨v, by simpa using v'_norm, λ i, _⟩,
-  simp [v],
+  let v := (InnerProductSpace.toDual ℝ E).symm (-v')
+  refine ⟨v, by simpa [v] using v'_norm, fun i ↦ ?_⟩
+  simp [v]
   linarith [hv' i]
-end
 
 /-- A semicontraction on a finite-dimensional vector space admits an asymptotic
 translation vector. -/
 theorem exists_tendsto_div :
-  ∃ (v : E), tendsto (λ (n : ℕ), (1 / (n : ℝ)) • (f^[n] 0)) atTop (𝓝 v) :=
-begin
+    ∃ (v : E), Tendsto (fun (n : ℕ) ↦ (1 / (n : ℝ)) • (f^[n] 0)) atTop (𝓝 v) := by
   obtain ⟨v₀, v₀_norm, h₀⟩ :
     ∃ (v : E), ‖v‖ ≤ 1 ∧ ∀ (i : ℕ), (i : ℝ) * h.l ≤ ⟪v, (f^[i] 0)⟫ :=
-      h.exists_asymp_vector,
-  let v := h.l • v₀,
-  use v,
+      h.exists_asymp_vector
+  let v := h.l • v₀
+  use v
   have A : ∀ᶠ (n : ℕ) in atTop,
-    ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖^2 ≤ (h.u n / n)^2 - h.l^2,
-  { apply eventually_atTop.2 ⟨1, λ n hn, _⟩,
-    have n_ne_zero : n ≠ 0 := (zero_lt_one.trans_le hn).ne',
-    calc ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖ ^ 2 =
-    ‖(1 / (n : ℝ)) • (f^[n] 0)‖^2 - 2 * ⟪(1 / (n : ℝ)) • (f^[n] 0), v⟫ + ‖v‖^2 :
-      norm_sub_sq_real
-    _ = (h.u n / n)^2 - 2 * h.l / n * ⟪v₀, (f^[n] 0)⟫ + h.l^2 * ‖v₀‖^2 :
-       begin
-        congr' 2,
-        { simp [norm_smul, real.norm_eq_abs, u, dist_zero_left,
-                div_eq_inv_mul, mul_pow] },
-        { simp [real_inner_smul_left, real_inner_smul_right, div_eq_inv_mul,
-                real_inner_comm],
-          ring },
-        { simp [norm_smul, real.norm_eq_abs, mul_pow] }
-      end
-    _ ≤ (h.u n / n)^2 - 2 * h.l / n * (n * h.l) + h.l^2 * 1^2 :
-      begin
-        refine add_le_add (sub_le_sub le_rfl _) _,
-        { apply mul_le_mul_of_nonneg_left (h₀ n),
-          exact mul_nonneg (mul_nonneg zero_le_two h.l_nonneg) (by simp) },
-        { refine mul_le_mul_of_nonneg_left _ (sq_nonneg _),
-          exact pow_le_pow_of_le_left (norm_nonneg _) v₀_norm _ }
-      end
-    _ = (h.u n / n)^2 - h.l^2 : by { field_simp [n_ne_zero], ring } },
-  have B : tendsto (λ (n : ℕ), (h.u n / n)^2 - h.l^2) atTop (𝓝 (h.l^2 - h.l^2)) :=
-    (h.tendsto_lim.pow 2).sub tendsto_const_nhds,
-  have C : tendsto (λ (n : ℕ), ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖^2) atTop (𝓝 0),
-  { rw [sub_self] at B,
-    apply tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds B _ A,
-    exact eventually_of_forall (fun n ↦ by simp) },
-  have D : tendsto (λ (n : ℕ), ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖) atTop (𝓝 0),
-    by { convert C.sqrt; simp },
-  exact tendsto_iff_norm_tendsto_zero.2 D,
-end
+      ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖^2 ≤ (u n / n)^2 - h.l^2 := by
+    apply eventually_atTop.2 ⟨1, fun n hn ↦  ?_⟩
+    have n_ne_zero : n ≠ 0 := (zero_lt_one.trans_le hn).ne'
+    calc ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖ ^ 2
+    _ = ‖(1 / (n : ℝ)) • (f^[n] 0)‖^2 - 2 * ⟪(1 / (n : ℝ)) • (f^[n] 0), v⟫ + ‖v‖^2 :=
+      norm_sub_sq_real _ _
+    _ = (u n / n)^2 - 2 * h.l / n * ⟪v₀, (f^[n] 0)⟫ + h.l^2 * ‖v₀‖^2 := by
+        congr 2
+        · simp [norm_smul, div_eq_inv_mul, mul_pow]
+        · simp [real_inner_smul_left, real_inner_smul_right, v]
+          rw [real_inner_comm]
+          ring
+        · simp [norm_smul, Real.norm_eq_abs, mul_pow, v]
+    _ ≤ (u n / n) ^ 2 - 2 * h.l / n * (n * h.l) + h.l ^ 2 * 1 ^ 2 := by
+      gcongr
+      · have := h.l_nonneg
+        positivity
+      · exact h₀ n
+    _ = (u n / n) ^ 2 - h.l ^ 2 := by field_simp [n_ne_zero]; ring
+  have B : Tendsto (fun (n : ℕ) ↦ (u n / n) ^ 2 - h.l^2) atTop (𝓝 (h.l^2 - h.l^2)) :=
+    (h.tendsto_lim.pow 2).sub tendsto_const_nhds
+  have C : Tendsto (fun (n : ℕ) ↦ ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖^2) atTop (𝓝 0) := by
+    rw [sub_self] at B
+    apply tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds B _ A
+    exact Eventually.of_forall (fun n ↦ by simp)
+  have D : Tendsto (fun (n : ℕ) ↦ ‖(1 / (n : ℝ)) • (f^[n] 0) - v‖) atTop (𝓝 0) := by
+    convert C.sqrt <;> simp
+  exact tendsto_iff_norm_sub_tendsto_zero.2 D
+
 
 -- discuter de espace vectoriel normé / espace euclidien
 -- et dimension finie
 
 
-
-
-
-
-
-
-
-
-
+omit h [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
 
 /-- Attention: si on ne fait pas attention à l'énoncé, on peut donner une
 -- preuve triviale d'un résultat stupide. -/
 lemma wrong_exists_tendsto_div' :
-  ∃ (v : E), tendsto (λ (n : ℕ), (1 / n) • (f^[n] 0)) atTop (𝓝 v) :=
-⟨(0 : E), tendsto_const_nhds.congr' $
-  eventually_atTop.2 ⟨2, λ n hn, by simp [nat.div_eq_of_lt hn]⟩⟩
+    ∃ (v : E), Tendsto (fun (n : ℕ) ↦ (1 / n) • (f^[n] 0)) atTop (𝓝 v) :=
+  ⟨(0 : E), tendsto_const_nhds.congr' $
+    eventually_atTop.2 ⟨2, fun n hn ↦ by simp [Nat.div_eq_of_lt hn]⟩⟩
 
 /-- Version un peu plus détaillée du précédent -/
 lemma wrong_exists_tendsto_div :
-  ∃ (v : E), tendsto (λ (n : ℕ), (1 / n) • (f^[n] 0)) atTop (𝓝 v) :=
-begin
-  use 0,
-  have A : ∀ n ≥ 2, 1/n = 0,
-  { assume n hn,
-    exact nat.div_eq_of_lt hn },
-  have : tendsto (λ (n : ℕ), (0 : E)) atTop (𝓝 0) := tendsto_const_nhds,
-  apply tendsto.congr' _ this,
-  apply eventually_atTop.2 ⟨2, _⟩,
-  assume n hn,
+    ∃ (v : E), Tendsto (fun (n : ℕ) ↦ (1 / n) • (f^[n] 0)) atTop (𝓝 v) := by
+  use 0
+  have A : ∀ n ≥ 2, 1/n = 0 := by
+    intro n hn
+    exact Nat.div_eq_of_lt hn
+  have : Tendsto (fun (n : ℕ) ↦ (0 : E)) atTop (𝓝 0) := tendsto_const_nhds
+  apply Tendsto.congr' _ this
+  apply eventually_atTop.2 ⟨2, _⟩
+  intro n hn
   simp [A n hn]
-end
-
 
 end semicontraction
