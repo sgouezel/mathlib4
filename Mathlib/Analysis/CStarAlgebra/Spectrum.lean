@@ -3,11 +3,13 @@ Copyright (c) 2022 Jireh Loreaux. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jireh Loreaux
 -/
-import Mathlib.Analysis.CStarAlgebra.Unitization
-import Mathlib.Analysis.Complex.Convex
-import Mathlib.Analysis.Normed.Algebra.Spectrum
-import Mathlib.Analysis.SpecialFunctions.Exponential
-import Mathlib.Algebra.Star.StarAlgHom
+module
+
+public import Mathlib.Analysis.CStarAlgebra.Unitization
+public import Mathlib.Analysis.Complex.Convex
+public import Mathlib.Analysis.Normed.Algebra.GelfandFormula
+public import Mathlib.Analysis.SpecialFunctions.Exponential
+public import Mathlib.Algebra.Star.StarAlgHom
 
 /-! # Spectral properties in C⋆-algebras
 
@@ -34,7 +36,7 @@ we can still establish a form of spectral permanence.
 
 ## Main statements
 
-+ `unitary.spectrum_subset_circle`: The spectrum of a unitary element is contained in the unit
++ `Unitary.spectrum_subset_circle`: The spectrum of a unitary element is contained in the unit
   sphere in `ℂ`.
 + `IsSelfAdjoint.spectralRadius_eq_nnnorm`: The spectral radius of a selfadjoint element is equal
   to its norm.
@@ -53,6 +55,8 @@ we can still establish a form of spectral permanence.
 
 -/
 
+@[expose] public section
+
 
 local notation "σ" => spectrum
 local postfix:max "⋆" => star
@@ -68,21 +72,28 @@ section UnitarySpectrum
 variable {𝕜 : Type*} [NormedField 𝕜] {E : Type*} [NormedRing E] [StarRing E] [CStarRing E]
   [NormedAlgebra 𝕜 E] [CompleteSpace E]
 
-theorem unitary.spectrum_subset_circle (u : unitary E) :
+theorem Unitary.spectrum_subset_circle (u : unitary E) :
     spectrum 𝕜 (u : E) ⊆ Metric.sphere 0 1 := by
   nontriviality E
   refine fun k hk => mem_sphere_zero_iff_norm.mpr (le_antisymm ?_ ?_)
   · simpa only [CStarRing.norm_coe_unitary u] using norm_le_norm_of_mem hk
-  · rw [← unitary.val_toUnits_apply u] at hk
+  · rw [← Unitary.val_toUnits_apply u] at hk
     have hnk := ne_zero_of_mem_of_unit hk
-    rw [← inv_inv (unitary.toUnits u), ← spectrum.map_inv, Set.mem_inv] at hk
-    have : ‖k‖⁻¹ ≤ ‖(↑(unitary.toUnits u)⁻¹ : E)‖ := by
+    rw [← inv_inv (Unitary.toUnits u), ← spectrum.map_inv, Set.mem_inv] at hk
+    have : ‖k‖⁻¹ ≤ ‖(↑(Unitary.toUnits u)⁻¹ : E)‖ := by
       simpa only [norm_inv] using norm_le_norm_of_mem hk
     simpa using inv_le_of_inv_le₀ (norm_pos_iff.mpr hnk) this
 
+@[deprecated (since := "2025-10-29")] alias unitary.spectrum_subset_circle :=
+  Unitary.spectrum_subset_circle
+
 theorem spectrum.subset_circle_of_unitary {u : E} (h : u ∈ unitary E) :
     spectrum 𝕜 u ⊆ Metric.sphere 0 1 :=
-  unitary.spectrum_subset_circle ⟨u, h⟩
+  Unitary.spectrum_subset_circle ⟨u, h⟩
+
+theorem spectrum.norm_eq_one_of_unitary {u : E} (hu : u ∈ unitary E)
+    ⦃z : 𝕜⦄ (hz : z ∈ spectrum 𝕜 u) : ‖z‖ = 1 := by
+  simpa using spectrum.subset_circle_of_unitary hu hz
 
 end UnitarySpectrum
 
@@ -110,7 +121,7 @@ theorem IsSelfAdjoint.spectralRadius_eq_nnnorm {a : A} (ha : IsSelfAdjoint a) :
   refine tendsto_nhds_unique ?_ hconst
   convert
     (spectrum.pow_nnnorm_pow_one_div_tendsto_nhds_spectralRadius (a : A)).comp
-      (Nat.tendsto_pow_atTop_atTop_of_one_lt one_lt_two) using 1
+      (tendsto_pow_atTop_atTop_of_one_lt one_lt_two) using 1
   refine funext fun n => ?_
   rw [Function.comp_apply, ha.nnnorm_pow_two_pow, ENNReal.coe_pow, ← rpow_natCast, ← rpow_mul]
   simp
@@ -149,8 +160,8 @@ theorem IsSelfAdjoint.mem_spectrum_eq_re {a : A} (ha : IsSelfAdjoint a) {z : ℂ
     simpa only [Units.smul_def, Units.val_mk0] using
       spectrum.exp_mem_exp (Iu • a) (smul_mem_smul_iff.mpr hz)
   exact Complex.ext (ofReal_re _) <| by
-    simpa only [← Complex.exp_eq_exp_ℂ, mem_sphere_zero_iff_norm, norm_eq_abs, abs_exp,
-      Real.exp_eq_one_iff, smul_eq_mul, I_mul, neg_eq_zero] using
+    simpa only [← Complex.exp_eq_exp_ℂ, mem_sphere_zero_iff_norm, norm_exp, Real.exp_eq_one_iff,
+      smul_eq_mul, I_mul, neg_eq_zero] using
       spectrum.subset_circle_of_unitary hu this
 
 /-- Any element of the spectrum of a selfadjoint is real. -/
@@ -208,8 +219,8 @@ lemma coe_isUnit {a : S} : IsUnit (a : A) ↔ IsUnit a := by
   have spec_eq {x : S} (hx : IsSelfAdjoint x) : spectrum ℂ x = spectrum ℂ (x : A) :=
     Subalgebra.spectrum_eq_of_isPreconnected_compl S _ <|
       (hx.map S.subtype).isConnected_spectrum_compl.isPreconnected
-  rw [← StarMemClass.coe_star, ← MulMemClass.coe_mul, ← spectrum.zero_not_mem_iff ℂ, ← spec_eq,
-    spectrum.zero_not_mem_iff] at ha₁ ha₂
+  rw [← StarMemClass.coe_star, ← MulMemClass.coe_mul, ← spectrum.zero_notMem_iff ℂ, ← spec_eq,
+    spectrum.zero_notMem_iff] at ha₁ ha₂
   · have h₁ : ha₁.unit⁻¹ * star a * a = 1 := mul_assoc _ _ a ▸ ha₁.val_inv_mul
     have h₂ : a * (star a * ha₂.unit⁻¹) = 1 := (mul_assoc a _ _).symm ▸ ha₂.mul_val_inv
     exact ⟨⟨a, ha₁.unit⁻¹ * star a, left_inv_eq_right_inv h₁ h₂ ▸ h₂, h₁⟩, rfl⟩

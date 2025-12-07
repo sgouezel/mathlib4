@@ -3,10 +3,12 @@ Copyright (c) 2019 Yury Kudryashov. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Yury Kudryashov
 -/
-import Mathlib.CategoryTheory.ConcreteCategory.Bundled
-import Mathlib.CategoryTheory.DiscreteCategory
-import Mathlib.CategoryTheory.Types
-import Mathlib.CategoryTheory.Bicategory.Strict
+module
+
+public import Mathlib.CategoryTheory.Bicategory.Strict.Basic
+public import Mathlib.CategoryTheory.ConcreteCategory.Bundled
+public import Mathlib.CategoryTheory.Discrete.Basic
+public import Mathlib.CategoryTheory.Types.Basic
 
 /-!
 # Category of categories
@@ -21,12 +23,14 @@ Though `Cat` is not a concrete category, we use `bundled` to define
 its carrier type.
 -/
 
+@[expose] public section
+
 
 universe v u
 
 namespace CategoryTheory
 
-open Bicategory
+open Bicategory Functor
 
 -- intended to be used with explicit universe parameters
 /-- Category of categories. -/
@@ -39,7 +43,7 @@ namespace Cat
 instance : Inhabited Cat :=
   ⟨⟨Type u, CategoryTheory.types⟩⟩
 
--- Porting note: maybe this coercion should be defined to be `objects.obj`?
+-- TODO: maybe this coercion should be defined to be `objects.obj`?
 instance : CoeSort Cat (Type u) :=
   ⟨Bundled.α⟩
 
@@ -74,6 +78,10 @@ instance bicategory.strict : Bicategory.Strict Cat.{v, u} where
 instance category : LargeCategory.{max v u} Cat.{v, u} :=
   StrictBicategory.category Cat.{v, u}
 
+@[ext]
+theorem ext {C D : Cat} {F G : C ⟶ D} {α β : F ⟶ G} (w : α.app = β.app) : α = β :=
+  NatTrans.ext w
+
 @[simp]
 theorem id_obj {C : Cat} (X : C) : (𝟙 C : C ⥤ C).obj X = X :=
   rfl
@@ -99,6 +107,11 @@ theorem comp_app {C D : Cat} {F G H : C ⟶ D} (α : F ⟶ G) (β : G ⟶ H) (X 
     (α ≫ β).app X = α.app X ≫ β.app X := rfl
 
 @[simp]
+theorem eqToHom_app {C D : Cat} (F G : C ⟶ D) (h : F = G) (X : C) :
+    (eqToHom h).app X = eqToHom (Functor.congr_obj h X) :=
+  CategoryTheory.eqToHom_app h X
+
+@[simp]
 lemma whiskerLeft_app {C D E : Cat} (F : C ⟶ D) {G H : D ⟶ E} (η : G ⟶ H) (X : C) :
     (F ◁ η).app X = η.app (F.obj X) :=
   rfl
@@ -107,11 +120,6 @@ lemma whiskerLeft_app {C D E : Cat} (F : C ⟶ D) {G H : D ⟶ E} (η : G ⟶ H)
 lemma whiskerRight_app {C D E : Cat} {F G : C ⟶ D} (H : D ⟶ E) (η : F ⟶ G) (X : C) :
     (η ▷ H).app X = H.map (η.app X) :=
   rfl
-
-@[simp]
-theorem eqToHom_app {C D : Cat} (F G : C ⟶ D) (h : F = G) (X : C) :
-    (eqToHom h).app X = eqToHom (Functor.congr_obj h X) :=
-  CategoryTheory.eqToHom_app h X
 
 lemma leftUnitor_hom_app {B C : Cat} (F : B ⟶ C) (X : B) : (λ_ F).hom.app X = eqToHom (by simp) :=
   rfl
@@ -133,13 +141,35 @@ lemma associator_inv_app {B C D E : Cat} (F : B ⟶ C) (G : C ⟶ D) (H : D ⟶ 
     (α_ F G H).inv.app X = eqToHom (by simp) :=
   rfl
 
-/-- The identity in the category of categories equals the identity functor.-/
+/-- The identity in the category of categories equals the identity functor. -/
 theorem id_eq_id (X : Cat) : 𝟙 X = 𝟭 X := rfl
 
-/-- Composition in the category of categories equals functor composition.-/
+/-- Composition in the category of categories equals functor composition. -/
 theorem comp_eq_comp {X Y Z : Cat} (F : X ⟶ Y) (G : Y ⟶ Z) : F ≫ G = F ⋙ G := rfl
 
 @[simp] theorem of_α (C) [Category C] : (of C).α = C := rfl
+
+@[simp] theorem coe_of (C : Cat.{v, u}) : Cat.of C = C := rfl
+
+end Cat
+
+namespace Functor
+
+/-- Functors between categories of the same size define arrows in `Cat`. -/
+def toCatHom {C D : Type u} [Category.{v} C] [Category.{v} D] (F : C ⥤ D) :
+    Cat.of C ⟶ Cat.of D := F
+
+/-- Arrows in `Cat` define functors. -/
+def ofCatHom {C D : Type} [Category C] [Category D] (F : Cat.of C ⟶ Cat.of D) : C ⥤ D := F
+
+@[simp] theorem to_ofCatHom {C D : Type} [Category C] [Category D] (F : Cat.of C ⟶ Cat.of D) :
+    (ofCatHom F).toCatHom = F := rfl
+
+@[simp] theorem of_toCatHom {C D : Type} [Category C] [Category D] (F : C ⥤ D) :
+    ofCatHom (F.toCatHom) = F := rfl
+
+end Functor
+namespace Cat
 
 /-- Functor that gets the set of objects of a category. It is not
 called `forget`, because it is not a faithful functor. -/
@@ -147,8 +177,8 @@ def objects : Cat.{v, u} ⥤ Type u where
   obj C := C
   map F := F.obj
 
--- Porting note: this instance was needed for CategoryTheory.Category.Cat.Limit
-instance (X : Cat.{v, u}) : Category (objects.obj X) := (inferInstance : Category X)
+/-- See through the defeq `objects.obj X = X`. -/
+instance (X : Cat.{v, u}) : Category (objects.obj X) := inferInstanceAs <| Category X
 
 section
 
@@ -161,6 +191,20 @@ def equivOfIso {C D : Cat} (γ : C ≅ D) : C ≌ D where
   unitIso := eqToIso <| Eq.symm γ.hom_inv_id
   counitIso := eqToIso γ.inv_hom_id
 
+/-- Under certain hypotheses, an equivalence of categories actually
+defines an isomorphism in `Cat`. -/
+@[simps]
+def isoOfEquiv {C D : Cat.{v, u}} (e : C ≌ D)
+    (h₁ : ∀ (X : C), e.inverse.obj (e.functor.obj X) = X)
+    (h₂ : ∀ (Y : D), e.functor.obj (e.inverse.obj Y) = Y)
+    (h₃ : ∀ (X : C), e.unitIso.hom.app X = eqToHom (h₁ X).symm := by cat_disch)
+    (h₄ : ∀ (Y : D), e.counitIso.hom.app Y = eqToHom (h₂ Y) := by cat_disch) :
+    C ≅ D where
+  hom := e.functor
+  inv := e.inverse
+  hom_inv_id := (Functor.ext_of_iso e.unitIso (fun X ↦ (h₁ X).symm) h₃).symm
+  inv_hom_id := (Functor.ext_of_iso e.counitIso h₂ h₄)
+
 end
 
 end Cat
@@ -172,18 +216,16 @@ This ought to be modelled as a 2-functor!
 @[simps]
 def typeToCat : Type u ⥤ Cat where
   obj X := Cat.of (Discrete X)
-  map := fun {X} {Y} f => by
-    dsimp
-    exact Discrete.functor (Discrete.mk ∘ f)
+  map := fun f => Discrete.functor (Discrete.mk ∘ f)
   map_id X := by
     apply Functor.ext
     · intro X Y f
       cases f
-      simp only [id_eq, eqToHom_refl, Cat.id_map, Category.comp_id, Category.id_comp]
+      simp only [eqToHom_refl, Cat.id_map, Category.comp_id, Category.id_comp]
       apply ULift.ext
-      aesop_cat
-    · aesop_cat
-  map_comp f g := by apply Functor.ext; aesop_cat
+      cat_disch
+    · simp
+  map_comp f g := by apply Functor.ext; cat_disch
 
 instance : Functor.Faithful typeToCat.{u} where
   map_injective {_X} {_Y} _f _g h :=
@@ -195,7 +237,7 @@ instance : Functor.Full typeToCat.{u} where
     · intro x y f
       dsimp
       apply ULift.ext
-      aesop_cat
+      cat_disch
     · rintro ⟨x⟩
       apply Discrete.ext
       rfl⟩

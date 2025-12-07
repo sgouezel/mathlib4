@@ -3,8 +3,9 @@ Copyright (c) 2023 Joël Riou. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Joël Riou
 -/
+module
 
-import Mathlib.CategoryTheory.Limits.Preserves.Shapes.Zero
+public import Mathlib.CategoryTheory.Limits.Preserves.Shapes.Zero
 
 /-!
 # Short complexes
@@ -17,16 +18,20 @@ the Liquid Tensor Experiment.
 
 -/
 
+@[expose] public section
+
 namespace CategoryTheory
 
 open Category Limits
 
-variable (C D : Type*) [Category C] [Category D]
+variable {C D E : Type*} [Category C] [Category D] [Category E]
+  [HasZeroMorphisms C] [HasZeroMorphisms D] [HasZeroMorphisms E]
 
+variable (C) in
 /-- A short complex in a category `C` with zero morphisms is the datum
 of two composable morphisms `f : X₁ ⟶ X₂` and `g : X₂ ⟶ X₃` such that
 `f ≫ g = 0`. -/
-structure ShortComplex [HasZeroMorphisms C] where
+structure ShortComplex where
   /-- the first (left) object of a `ShortComplex` -/
   {X₁ : C}
   /-- the second (middle) object of a `ShortComplex` -/
@@ -44,9 +49,6 @@ namespace ShortComplex
 
 attribute [reassoc (attr := simp)] ShortComplex.zero
 
-variable {C}
-variable [HasZeroMorphisms C]
-
 /-- Morphisms of short complexes are the commutative diagrams of the obvious shape. -/
 @[ext]
 structure Hom (S₁ S₂ : ShortComplex C) where
@@ -57,9 +59,9 @@ structure Hom (S₁ S₂ : ShortComplex C) where
   /-- the morphism on the right objects -/
   τ₃ : S₁.X₃ ⟶ S₂.X₃
   /-- the left commutative square of a morphism in `ShortComplex` -/
-  comm₁₂ : τ₁ ≫ S₂.f = S₁.f ≫ τ₂ := by aesop_cat
+  comm₁₂ : τ₁ ≫ S₂.f = S₁.f ≫ τ₂ := by cat_disch
   /-- the right commutative square of a morphism in `ShortComplex` -/
-  comm₂₃ : τ₂ ≫ S₂.g = S₁.g ≫ τ₃ := by aesop_cat
+  comm₂₃ : τ₂ ≫ S₂.g = S₁.g ≫ τ₃ := by cat_disch
 
 attribute [reassoc] Hom.comm₁₂ Hom.comm₂₃
 attribute [local simp] Hom.comm₁₂ Hom.comm₂₃ Hom.comm₁₂_assoc Hom.comm₂₃_assoc
@@ -155,16 +157,19 @@ instance (f : S₁ ⟶ S₂) [IsIso f] : IsIso f.τ₃ := (inferInstance : IsIso
   app S := S.g
 
 @[reassoc (attr := simp)]
-lemma π₁Toπ₂_comp_π₂Toπ₃ : (π₁Toπ₂ : (_ : _ ⥤ C) ⟶ _) ≫ π₂Toπ₃ = 0 := by aesop_cat
-
-variable {D}
-variable [HasZeroMorphisms D]
+lemma π₁Toπ₂_comp_π₂Toπ₃ : (π₁Toπ₂ : (_ : _ ⥤ C) ⟶ _) ≫ π₂Toπ₃ = 0 := by cat_disch
 
 /-- The short complex in `D` obtained by applying a functor `F : C ⥤ D` to a
 short complex in `C`, assuming that `F` preserves zero morphisms. -/
 @[simps]
 def map (F : C ⥤ D) [F.PreservesZeroMorphisms] : ShortComplex D :=
   ShortComplex.mk (F.map S.f) (F.map S.g) (by rw [← F.map_comp, S.zero, F.map_zero])
+
+@[simp] lemma map_id (S : ShortComplex C) : S.map (𝟭 C) = S := rfl
+
+@[simp] lemma map_comp (S : ShortComplex C)
+    (F : C ⥤ D) [F.PreservesZeroMorphisms] (G : D ⥤ E) [G.PreservesZeroMorphisms] :
+    S.map (F ⋙ G) = (S.map F).map G := rfl
 
 /-- The morphism of short complexes `S.map F ⟶ S.map G` induced by
 a natural transformation `F ⟶ G`. -/
@@ -200,11 +205,11 @@ def _root_.CategoryTheory.Functor.mapShortComplex (F : C ⥤ D) [F.PreservesZero
         dsimp
         simp only [← F.map_comp, φ.comm₂₃] }
 
-/-- A constructor for isomorphisms in the category `ShortComplex C`-/
+/-- A constructor for isomorphisms in the category `ShortComplex C` -/
 @[simps]
 def isoMk (e₁ : S₁.X₁ ≅ S₂.X₁) (e₂ : S₁.X₂ ≅ S₂.X₂) (e₃ : S₁.X₃ ≅ S₂.X₃)
-    (comm₁₂ : e₁.hom ≫ S₂.f = S₁.f ≫ e₂.hom := by aesop_cat)
-    (comm₂₃ : e₂.hom ≫ S₂.g = S₁.g ≫ e₃.hom := by aesop_cat) :
+    (comm₁₂ : e₁.hom ≫ S₂.f = S₁.f ≫ e₂.hom := by cat_disch)
+    (comm₂₃ : e₂.hom ≫ S₂.g = S₁.g ≫ e₃.hom := by cat_disch) :
     S₁ ≅ S₂ where
   hom := ⟨e₁.hom, e₂.hom, e₃.hom, comm₁₂, comm₂₃⟩
   inv := homMk e₁.inv e₂.inv e₃.inv
@@ -215,6 +220,16 @@ def isoMk (e₁ : S₁.X₁ ≅ S₂.X₁) (e₂ : S₁.X₂ ≅ S₂.X₂) (e�
 
 lemma isIso_of_isIso (f : S₁ ⟶ S₂) [IsIso f.τ₁] [IsIso f.τ₂] [IsIso f.τ₃] : IsIso f :=
   (isoMk (asIso f.τ₁) (asIso f.τ₂) (asIso f.τ₃)).isIso_hom
+
+/-- The first map of a short complex, as a functor. -/
+@[simps] def fFunctor : ShortComplex C ⥤ Arrow C where
+  obj S := .mk S.f
+  map {S T} f := Arrow.homMk f.τ₁ f.τ₂ f.comm₁₂
+
+/-- The second map of a short complex, as a functor. -/
+@[simps] def gFunctor : ShortComplex C ⥤ Arrow C where
+  obj S := .mk S.g
+  map {S T} f := Arrow.homMk f.τ₂ f.τ₃ f.comm₂₃
 
 /-- The opposite `ShortComplex` in `Cᵒᵖ` associated to a short complex in `C`. -/
 @[simps]

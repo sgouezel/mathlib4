@@ -3,9 +3,11 @@ Copyright (c) 2022 Jireh Loreaux. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jireh Loreaux
 -/
-import Mathlib.Analysis.Normed.Lp.lpSpace
-import Mathlib.Analysis.Normed.Lp.PiLp
-import Mathlib.Topology.ContinuousMap.Bounded
+module
+
+public import Mathlib.Analysis.Normed.Lp.PiLp
+public import Mathlib.Analysis.Normed.Lp.lpSpace
+public import Mathlib.Topology.ContinuousMap.Bounded.Normed
 
 /-!
 # Equivalences among $L^p$ spaces
@@ -35,6 +37,9 @@ the subtype of `PreLp` satisfying `Memℓp`.
 
 -/
 
+@[expose] public section
+
+open WithLp
 
 open scoped ENNReal
 
@@ -56,10 +61,8 @@ theorem Memℓp.all (f : ∀ i, E i) : Memℓp f p := by
 
 /-- The canonical `Equiv` between `lp E p ≃ PiLp p E` when `E : α → Type u` with `[Finite α]`. -/
 def Equiv.lpPiLp : lp E p ≃ PiLp p E where
-  toFun f := ⇑f
-  invFun f := ⟨f, Memℓp.all f⟩
-  left_inv _f := rfl
-  right_inv _f := rfl
+  toFun f := toLp p ⇑f
+  invFun f := ⟨ofLp f, Memℓp.all f⟩
 
 theorem coe_equiv_lpPiLp (f : lp E p) : Equiv.lpPiLp f = ⇑f :=
   rfl
@@ -91,9 +94,6 @@ section Equivₗᵢ
 
 variable [Fintype α] (𝕜 : Type*) [NontriviallyNormedField 𝕜] [∀ i, NormedSpace 𝕜 (E i)]
 variable (E)
-/- porting note: Lean is unable to work with `lpPiLpₗᵢ` if `E` is implicit without
-annotating with `(E := E)` everywhere, so we just make it explicit. This file has no
-dependencies. -/
 
 /-- The canonical `LinearIsometryEquiv` between `lp E p` and `PiLp p E` when `E : α → Type u`
 with `[Fintype α]` and `[Fact (1 ≤ p)]`. -/
@@ -132,11 +132,8 @@ section NormedAddCommGroup
 noncomputable def AddEquiv.lpBCF : lp (fun _ : α ↦ E) ∞ ≃+ (α →ᵇ E) where
   toFun f := ofNormedAddCommGroupDiscrete f ‖f‖ <| le_ciSup (memℓp_infty_iff.mp f.prop)
   invFun f := ⟨⇑f, f.bddAbove_range_norm_comp⟩
-  left_inv _f := lp.ext rfl
-  right_inv _f := rfl
   map_add' _f _g := rfl
 
-@[deprecated (since := "2024-03-16")] alias AddEquiv.lpBcf := AddEquiv.lpBCF
 
 theorem coe_addEquiv_lpBCF (f : lp (fun _ : α ↦ E) ∞) : (AddEquiv.lpBCF f : α → E) = f :=
   rfl
@@ -145,9 +142,6 @@ theorem coe_addEquiv_lpBCF_symm (f : α →ᵇ E) : (AddEquiv.lpBCF.symm f : α 
   rfl
 
 variable (E)
-/- porting note: Lean is unable to work with `lpPiLpₗᵢ` if `E` is implicit without
-annotating with `(E := E)` everywhere, so we just make it explicit. This file has no
-dependencies. -/
 
 /-- The canonical map between `lp (fun _ : α ↦ E) ∞` and `α →ᵇ E` as a `LinearIsometryEquiv`. -/
 noncomputable def lpBCFₗᵢ : lp (fun _ : α ↦ E) ∞ ≃ₗᵢ[𝕜] α →ᵇ E :=
@@ -155,7 +149,6 @@ noncomputable def lpBCFₗᵢ : lp (fun _ : α ↦ E) ∞ ≃ₗᵢ[𝕜] α →
     map_smul' := fun _ _ ↦ rfl
     norm_map' := fun f ↦ by simp only [norm_eq_iSup_norm, lp.norm_eq_ciSup]; rfl }
 
-@[deprecated (since := "2024-03-16")] alias lpBcfₗᵢ := lpBCFₗᵢ
 
 variable {𝕜 E}
 
@@ -174,7 +167,6 @@ noncomputable def RingEquiv.lpBCF : lp (fun _ : α ↦ R) ∞ ≃+* (α →ᵇ R
   { @AddEquiv.lpBCF _ R _ _ _ with
     map_mul' := fun _f _g => rfl }
 
-@[deprecated (since := "2024-03-16")] alias RingEquiv.lpBcf := RingEquiv.lpBCF
 
 variable {R}
 
@@ -193,7 +185,6 @@ variable (α)
 noncomputable def AlgEquiv.lpBCF : lp (fun _ : α ↦ A) ∞ ≃ₐ[𝕜] α →ᵇ A :=
   { RingEquiv.lpBCF A with commutes' := fun _k ↦ rfl }
 
-@[deprecated (since := "2024-03-16")] alias AlgEquiv.lpBcf := AlgEquiv.lpBCF
 
 variable {α A 𝕜}
 

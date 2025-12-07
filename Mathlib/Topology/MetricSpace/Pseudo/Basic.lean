@@ -1,12 +1,14 @@
 /-
-Copyright (c) 2015, 2017 Jeremy Avigad. All rights reserved.
+Copyright (c) 2015 Jeremy Avigad. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jeremy Avigad, Robert Y. Lewis, Johannes Hölzl, Mario Carneiro, Sébastien Gouëzel
 -/
-import Mathlib.Data.ENNReal.Real
-import Mathlib.Tactic.Bound.Attribute
-import Mathlib.Topology.EMetricSpace.Basic
-import Mathlib.Topology.MetricSpace.Pseudo.Defs
+module
+
+public import Mathlib.Data.ENNReal.Real
+public import Mathlib.Tactic.Bound.Attribute
+public import Mathlib.Topology.EMetricSpace.Basic
+public import Mathlib.Topology.MetricSpace.Pseudo.Defs
 
 /-!
 ## Pseudo-metric spaces
@@ -14,6 +16,8 @@ import Mathlib.Topology.MetricSpace.Pseudo.Defs
 Further results about pseudo-metric spaces.
 
 -/
+
+@[expose] public section
 
 open Set Filter TopologicalSpace Bornology
 open scoped ENNReal NNReal Uniformity Topology
@@ -34,7 +38,7 @@ theorem dist_le_Ico_sum_dist (f : ℕ → α) {m n} (h : m ≤ n) :
       dist (f m) (f (n + 1)) ≤ dist (f m) (f n) + dist (f n) (f (n + 1)) := dist_triangle _ _ _
       _ ≤ (∑ i ∈ Finset.Ico m n, _) + _ := add_le_add ihn le_rfl
       _ = ∑ i ∈ Finset.Ico m (n + 1), _ := by
-      { rw [Nat.Ico_succ_right_eq_insert_Ico hle, Finset.sum_insert, add_comm]; simp }
+        rw [← Finset.insert_Ico_right_eq_Ico_add_one hle, Finset.sum_insert, add_comm]; simp
 
 /-- The triangle (polygon) inequality for sequences of points; `Finset.range` version. -/
 theorem dist_le_range_sum_dist (f : ℕ → α) (n : ℕ) :
@@ -67,16 +71,10 @@ nonrec theorem isUniformInducing_iff [PseudoMetricSpace β] {f : α → β} :
     ((uniformity_basis_dist.comap _).le_basis_iff uniformity_basis_dist).trans <| by
       simp only [subset_def, Prod.forall, gt_iff_lt, preimage_setOf_eq, Prod.map_apply, mem_setOf]
 
-@[deprecated (since := "2024-10-05")]
-alias uniformInducing_iff := isUniformInducing_iff
-
 nonrec theorem isUniformEmbedding_iff [PseudoMetricSpace β] {f : α → β} :
     IsUniformEmbedding f ↔ Function.Injective f ∧ UniformContinuous f ∧
       ∀ δ > 0, ∃ ε > 0, ∀ {a b : α}, dist (f a) (f b) < ε → dist a b < δ := by
   rw [isUniformEmbedding_iff, and_comm, isUniformInducing_iff]
-
-@[deprecated (since := "2024-10-01")]
-alias uniformEmbedding_iff := isUniformEmbedding_iff
 
 /-- If a map between pseudometric spaces is a uniform embedding then the distance between `f x`
 and `f y` is controlled in terms of the distance between `x` and `y`. -/
@@ -85,9 +83,6 @@ theorem controlled_of_isUniformEmbedding [PseudoMetricSpace β] {f : α → β}
     (∀ ε > 0, ∃ δ > 0, ∀ {a b : α}, dist a b < δ → dist (f a) (f b) < ε) ∧
       ∀ δ > 0, ∃ ε > 0, ∀ {a b : α}, dist (f a) (f b) < ε → dist a b < δ :=
   ⟨uniformContinuous_iff.1 h.uniformContinuous, (isUniformEmbedding_iff.1 h).2.2⟩
-
-@[deprecated (since := "2024-10-01")]
-alias controlled_of_uniformEmbedding := controlled_of_isUniformEmbedding
 
 theorem totallyBounded_iff {s : Set α} :
     TotallyBounded s ↔ ∀ ε > 0, ∃ t : Set α, t.Finite ∧ s ⊆ ⋃ y ∈ t, ball y ε :=
@@ -150,7 +145,7 @@ theorem tendstoLocallyUniformly_iff [TopologicalSpace β] {F : ι → β → α}
     TendstoLocallyUniformly F f p ↔
       ∀ ε > 0, ∀ x : β, ∃ t ∈ 𝓝 x, ∀ᶠ n in p, ∀ y ∈ t, dist (f y) (F n y) < ε := by
   simp only [← tendstoLocallyUniformlyOn_univ, tendstoLocallyUniformlyOn_iff, nhdsWithin_univ,
-    mem_univ, forall_const, exists_prop]
+    mem_univ, forall_const]
 
 /-- Expressing uniform convergence using `dist`. -/
 theorem tendstoUniformly_iff {F : ι → β → α} {f : β → α} {p : Filter ι} :
@@ -166,15 +161,15 @@ variable {s : Set α}
 
 /-- Given a point `x` in a discrete subset `s` of a pseudometric space, there is an open ball
 centered at `x` and intersecting `s` only at `x`. -/
-theorem exists_ball_inter_eq_singleton_of_mem_discrete [DiscreteTopology s] {x : α} (hx : x ∈ s) :
+theorem exists_ball_inter_eq_singleton_of_mem_discrete (hs : IsDiscrete s) {x : α} (hx : x ∈ s) :
     ∃ ε > 0, Metric.ball x ε ∩ s = {x} :=
-  nhds_basis_ball.exists_inter_eq_singleton_of_mem_discrete hx
+  nhds_basis_ball.exists_inter_eq_singleton_of_mem_discrete hs hx
 
 /-- Given a point `x` in a discrete subset `s` of a pseudometric space, there is a closed ball
 of positive radius centered at `x` and intersecting `s` only at `x`. -/
-theorem exists_closedBall_inter_eq_singleton_of_discrete [DiscreteTopology s] {x : α} (hx : x ∈ s) :
+theorem exists_closedBall_inter_eq_singleton_of_discrete (hs : IsDiscrete s) {x : α} (hx : x ∈ s) :
     ∃ ε > 0, Metric.closedBall x ε ∩ s = {x} :=
-  nhds_basis_closedBall.exists_inter_eq_singleton_of_mem_discrete hx
+  nhds_basis_closedBall.exists_inter_eq_singleton_of_mem_discrete hs hx
 
 end Metric
 
@@ -207,8 +202,6 @@ end Real
 
 namespace Topology
 
--- Porting note: `TopologicalSpace.IsSeparable.separableSpace` moved to `EMetricSpace`
-
 /-- The preimage of a separable set by an inducing map is separable. -/
 protected lemma IsInducing.isSeparable_preimage {f : β → α} [TopologicalSpace β]
     (hf : IsInducing f) {s : Set α} (hs : IsSeparable s) : IsSeparable (f ⁻¹' s) := by
@@ -219,15 +212,9 @@ protected lemma IsInducing.isSeparable_preimage {f : β → α} [TopologicalSpac
   have := this.secondCountableTopology
   exact .of_subtype _
 
-@[deprecated (since := "2024-10-28")]
-alias _root_.Inducing.isSeparable_preimage := IsInducing.isSeparable_preimage
-
 protected theorem IsEmbedding.isSeparable_preimage {f : β → α} [TopologicalSpace β]
     (hf : IsEmbedding f) {s : Set α} (hs : IsSeparable s) : IsSeparable (f ⁻¹' s) :=
   hf.isInducing.isSeparable_preimage hs
-
-@[deprecated (since := "2024-10-26")]
-alias _root_.Embedding.isSeparable_preimage := IsEmbedding.isSeparable_preimage
 
 end Topology
 
@@ -256,3 +243,32 @@ theorem secondCountable_of_almost_dense_set
 end SecondCountable
 
 end Metric
+
+section Compact
+variable {X : Type*} [PseudoMetricSpace X] {s : Set X} {ε : ℝ}
+
+/-- Any compact set in a pseudometric space can be covered by finitely many balls of a given
+positive radius -/
+theorem finite_cover_balls_of_compact (hs : IsCompact s) {e : ℝ} (he : 0 < e) :
+    ∃ t ⊆ s, t.Finite ∧ s ⊆ ⋃ x ∈ t, ball x e :=
+  let ⟨t, hts, ht⟩ := hs.elim_nhds_subcover _ (fun x _ => ball_mem_nhds x he)
+  ⟨t, hts, t.finite_toSet, ht⟩
+
+alias IsCompact.finite_cover_balls := finite_cover_balls_of_compact
+
+/-- Any relatively compact set in a pseudometric space can be covered by finitely many balls of a
+given positive radius. -/
+lemma exists_finite_cover_balls_of_isCompact_closure (hs : IsCompact (closure s)) (hε : 0 < ε) :
+    ∃ t ⊆ s, t.Finite ∧ s ⊆ ⋃ x ∈ t, ball x ε := by
+  obtain ⟨t, hst⟩ := hs.elim_finite_subcover (fun x : s ↦ ball x ε) (fun _ ↦ isOpen_ball) fun x hx ↦
+    let ⟨y, hy, hxy⟩ := Metric.mem_closure_iff.1 hx _ hε; mem_iUnion.2 ⟨⟨y, hy⟩, hxy⟩
+  refine ⟨t.map ⟨Subtype.val, Subtype.val_injective⟩, by simp, Finset.finite_toSet _, ?_⟩
+  simpa using subset_closure.trans hst
+
+end Compact
+
+/-- If a map is continuous on a separable set `s`, then the image of `s` is also separable. -/
+theorem ContinuousOn.isSeparable_image [TopologicalSpace β] {f : α → β} {s : Set α}
+    (hf : ContinuousOn f s) (hs : IsSeparable s) : IsSeparable (f '' s) := by
+  rw [image_eq_range, ← image_univ]
+  exact (isSeparable_univ_iff.2 hs.separableSpace).image hf.restrict

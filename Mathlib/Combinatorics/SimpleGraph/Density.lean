@@ -3,14 +3,16 @@ Copyright (c) 2022 Yaël Dillies, Bhavik Mehta. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Yaël Dillies, Bhavik Mehta
 -/
-import Mathlib.Algebra.Order.Field.Basic
-import Mathlib.Combinatorics.SimpleGraph.Basic
-import Mathlib.Data.Rat.Cast.Order
-import Mathlib.Order.Partition.Finpartition
-import Mathlib.Tactic.GCongr
-import Mathlib.Tactic.NormNum
-import Mathlib.Tactic.Positivity
-import Mathlib.Tactic.Ring
+module
+
+public import Mathlib.Algebra.Order.Field.Basic
+public import Mathlib.Combinatorics.SimpleGraph.Basic
+public import Mathlib.Data.Rat.Cast.Order
+public import Mathlib.Order.Partition.Finpartition
+public import Mathlib.Tactic.GCongr
+public import Mathlib.Tactic.NormNum
+public import Mathlib.Tactic.Positivity
+public import Mathlib.Tactic.Ring
 
 /-!
 # Edge density
@@ -26,6 +28,8 @@ Between two finsets of vertices,
 * `SimpleGraph.edgeDensity`: Edge density of a graph.
 -/
 
+@[expose] public section
+
 open Finset
 
 variable {𝕜 ι κ α β : Type*}
@@ -37,7 +41,8 @@ namespace Rel
 
 section Asymmetric
 
-variable [LinearOrderedField 𝕜] (r : α → β → Prop) [∀ a, DecidablePred (r a)] {s s₁ s₂ : Finset α}
+variable [Field 𝕜] [LinearOrder 𝕜] [IsStrictOrderedRing 𝕜]
+  (r : α → β → Prop) [∀ a, DecidablePred (r a)] {s s₁ s₂ : Finset α}
   {t t₁ t₂ : Finset β} {a : α} {b : β} {δ : 𝕜}
 
 /-- Finset of edges of a relation between two finsets of vertices. -/
@@ -90,7 +95,8 @@ section DecidableEq
 variable [DecidableEq α] [DecidableEq β]
 
 lemma interedges_eq_biUnion :
-    interedges r s t = s.biUnion fun x ↦ {y ∈ t | r x y}.map ⟨(x, ·), Prod.mk.inj_left x⟩ := by
+    interedges r s t =
+      s.biUnion fun x ↦ {y ∈ t | r x y}.map ⟨(x, ·), Prod.mk_right_injective x⟩ := by
   ext ⟨x, y⟩; simp [mem_interedges_iff]
 
 theorem interedges_biUnion_left (s : Finset ι) (t : Finset β) (f : ι → Finset α) :
@@ -126,7 +132,7 @@ theorem edgeDensity_le_one (s : Finset α) (t : Finset β) : edgeDensity r s t �
 
 theorem edgeDensity_add_edgeDensity_compl (hs : s.Nonempty) (ht : t.Nonempty) :
     edgeDensity r s t + edgeDensity (fun x y ↦ ¬r x y) s t = 1 := by
-  rw [edgeDensity, edgeDensity, div_add_div_same, div_eq_one_iff_eq]
+  rw [edgeDensity, edgeDensity, ← add_div, div_eq_one_iff_eq]
   · exact mod_cast card_interedges_add_card_interedges_compl r s t
   · exact mod_cast (mul_pos hs.card_pos ht.card_pos).ne'
 
@@ -195,7 +201,7 @@ theorem abs_edgeDensity_sub_edgeDensity_le_two_mul_sub_sq (hs : s₂ ⊆ s₁) (
   have hδ' : 0 ≤ 2 * δ - δ ^ 2 := by
     rw [sub_nonneg, sq]
     gcongr
-    exact hδ₁.le.trans (by norm_num)
+    exact hδ₁.le.trans (by simp)
   rw [← sub_pos] at hδ₁
   obtain rfl | hs₂' := s₂.eq_empty_or_nonempty
   · rw [Finset.card_empty, Nat.cast_zero] at hs₂
@@ -222,7 +228,7 @@ densities is at most `2 * δ`. -/
 theorem abs_edgeDensity_sub_edgeDensity_le_two_mul (hs : s₂ ⊆ s₁) (ht : t₂ ⊆ t₁) (hδ : 0 ≤ δ)
     (hscard : (1 - δ) * #s₁ ≤ #s₂) (htcard : (1 - δ) * #t₁ ≤ #t₂) :
     |(edgeDensity r s₂ t₂ : 𝕜) - edgeDensity r s₁ t₁| ≤ 2 * δ := by
-  cases' lt_or_le δ 1 with h h
+  rcases lt_or_ge δ 1 with h | h
   · exact (abs_edgeDensity_sub_edgeDensity_le_two_mul_sub_sq r hs ht hδ h hscard htcard).trans
       ((sub_le_self_iff _).2 <| sq_nonneg δ)
   rw [two_mul]
@@ -336,10 +342,9 @@ theorem card_interedges_add_card_interedges_compl (h : Disjoint s t) :
 
 theorem edgeDensity_add_edgeDensity_compl (hs : s.Nonempty) (ht : t.Nonempty) (h : Disjoint s t) :
     G.edgeDensity s t + Gᶜ.edgeDensity s t = 1 := by
-  rw [edgeDensity_def, edgeDensity_def, div_add_div_same, div_eq_one_iff_eq]
+  rw [edgeDensity_def, edgeDensity_def, ← add_div, div_eq_one_iff_eq]
   · exact mod_cast card_interedges_add_card_interedges_compl _ h
-  -- Porting note: Wrote a workaround for `positivity` tactic.
-  · apply mul_ne_zero <;> exact mod_cast Nat.pos_iff_ne_zero.1 (Nonempty.card_pos ‹_›)
+  · positivity
 
 end DecidableEq
 

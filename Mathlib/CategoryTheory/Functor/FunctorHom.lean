@@ -3,9 +3,11 @@ Copyright (c) 2024 Jack McKoen. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jack McKoen, Joël Riou
 -/
-import Mathlib.CategoryTheory.Monoidal.FunctorCategory
-import Mathlib.CategoryTheory.Monoidal.Types.Basic
-import Mathlib.CategoryTheory.Enriched.Basic
+module
+
+public import Mathlib.CategoryTheory.Monoidal.FunctorCategory
+public import Mathlib.CategoryTheory.Monoidal.Types.Basic
+public import Mathlib.CategoryTheory.Enriched.Basic
 
 /-!
 # Internal hom in functor categories
@@ -15,9 +17,11 @@ which is a proxy for the "internal hom" functor Hom(F ⊗ coyoneda(-), G). This 
 that the functor category `C ⥤ D` is enriched over `C ⥤ Type max v' v u`. This is also useful
 for showing that `C ⥤ Type max w v u` is monoidal closed.
 
-See `Mathlib.CategoryTheory.Closed.FunctorToTypes`.
+See `Mathlib/CategoryTheory/Closed/FunctorToTypes.lean`.
 
 -/
+
+@[expose] public section
 
 
 universe w v' v u u'
@@ -37,7 +41,7 @@ structure HomObj (A : C ⥤ Type w) where
   /-- The morphism `F.obj c ⟶ G.obj c` associated with `a : A.obj c`. -/
   app (c : C) (a : A.obj c) : F.obj c ⟶ G.obj c
   naturality {c d : C} (f : c ⟶ d) (a : A.obj c) :
-    F.map f ≫ app d (A.map f a) = app c a ≫ G.map f := by aesop_cat
+    F.map f ≫ app d (A.map f a) = app c a ≫ G.map f := by cat_disch
 
 /-- When `F`, `G`, and `A` are all functors `C ⥤ Type w`, then `HomObj F G A` is in
 bijection with `F ⊗ A ⟶ G`. -/
@@ -82,7 +86,6 @@ def comp {M : C ⥤ D} (f : HomObj F G A) (g : HomObj G M A) : HomObj F M A wher
 def map {A' : C ⥤ Type w} (f : A' ⟶ A) (x : HomObj F G A) : HomObj F G A' where
   app Δ a := x.app Δ (f.app Δ a)
   naturality {Δ Δ'} φ a := by
-    dsimp
     rw [← x.naturality φ (f.app Δ a), FunctorToTypes.naturality _ _ f φ a]
 
 end HomObj
@@ -94,14 +97,13 @@ def homObjFunctor : (C ⥤ Type w)ᵒᵖ ⥤ Type max w v' u where
   map {A A'} f x :=
     { app := fun X a ↦ x.app X (f.unop.app _ a)
       naturality := fun {X Y} φ a ↦ by
-        dsimp
         rw [← HomObj.naturality]
         congr 2
         exact congr_fun (f.unop.naturality φ) a }
 
 /-- Composition of `homObjFunctor` with the co-Yoneda embedding, i.e. Hom(F ⊗ coyoneda(-), G).
 When `F G : C ⥤ Type max v' v u`, this is the internal hom of `F` and `G`: see
-`Mathlib.CategoryTheory.Closed.FunctorToTypes`. -/
+`Mathlib/CategoryTheory/Closed/FunctorToTypes.lean`. -/
 def functorHom (F G : C ⥤ D) : C ⥤ Type max v' v u := coyoneda.rightOp ⋙ homObjFunctor.{v} F G
 
 variable {F G} in
@@ -131,7 +133,7 @@ def functorHomEquiv (A : C ⥤ Type max u v v') : (A ⟶ F.functorHom G) ≃ Hom
     ext X a Y f
     exact (HomObj.congr_app (congr_fun (φ.naturality f) a) Y (𝟙 _)).trans
       (congr_arg ((φ.app X a).app Y) (by simp))
-  right_inv x := by aesop
+  right_inv x := by simp
 
 variable {F G} in
 /-- Morphisms `(𝟙_ (C ⥤ Type max v' v u) ⟶ F.functorHom G)` are in bijection with
@@ -145,13 +147,12 @@ def natTransEquiv : (𝟙_ (C ⥤ Type max v' v u) ⟶ F.functorHom G) ≃ (F �
     have := HomObj.congr_app (congr_fun (f.naturality φ) PUnit.unit) Y (𝟙 Y)
     dsimp [functorHom, homObjFunctor] at this
     aesop ⟩
-  invFun f := ⟨fun _ _ ↦ HomObj.ofNatTrans f, _⟩
+  invFun f := { app _ _ := HomObj.ofNatTrans f }
   left_inv f := by
     ext X a Y φ
     have := HomObj.congr_app (congr_fun (f.naturality φ) PUnit.unit) Y (𝟙 Y)
     dsimp [functorHom, homObjFunctor] at this
     aesop
-  right_inv _ := rfl
 
 end CategoryTheory.Functor
 
@@ -200,7 +201,7 @@ lemma associator_hom_apply (K L M N : C ⥤ D) {X : C}
     (α_ ((K.functorHom L).obj X) ((L.functorHom M).obj X) ((M.functorHom N).obj X)).hom x =
     ⟨x.1.1, x.1.2, x.2⟩ := rfl
 
-noncomputable instance : EnrichedCategory (C ⥤ Type max v' v u) (C ⥤ D) where
+instance : EnrichedCategory (C ⥤ Type max v' v u) (C ⥤ D) where
   Hom := functorHom
   id F := natTransEquiv.symm (𝟙 F)
   comp F G H := { app := fun _ ⟨f, g⟩ => f.comp g }

@@ -3,31 +3,36 @@ Copyright (c) 2018 Michael Jendrusch. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Michael Jendrusch, Kim Morrison
 -/
-import Mathlib.CategoryTheory.Monoidal.Functor
-import Mathlib.CategoryTheory.ChosenFiniteProducts
-import Mathlib.CategoryTheory.Limits.Shapes.Types
-import Mathlib.Logic.Equiv.Fin
+module
+
+public import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
+public import Mathlib.CategoryTheory.Monoidal.Functor
 
 /-!
-# The category of types is a monoidal category
+# The category of types is a (symmetric) monoidal category
 -/
+
+@[expose] public section
 
 
 open CategoryTheory Limits MonoidalCategory
-
-open Tactic
 
 universe v u
 
 namespace CategoryTheory
 
-instance typesChosenFiniteProducts : ChosenFiniteProducts (Type u) where
-  product := Types.binaryProductLimitCone
-  terminal := Types.terminalLimitCone
+instance typesCartesianMonoidalCategory : CartesianMonoidalCategory (Type u) :=
+  .ofChosenFiniteProducts Types.terminalLimitCone Types.binaryProductLimitCone
+
+instance : BraidedCategory (Type u) := .ofCartesianMonoidalCategory
+
+theorem types_tensorObj_def {X Y : Type u} : X ⊗ Y = (X × Y) := rfl
+
+theorem types_tensorUnit_def : 𝟙_ (Type u) = PUnit := rfl
 
 @[simp]
 theorem tensor_apply {W X Y Z : Type u} (f : W ⟶ X) (g : Y ⟶ Z) (p : W ⊗ Y) :
-    (f ⊗ g) p = (f p.1, g p.2) :=
+    (f ⊗ₘ g) p = (f p.1, g p.2) :=
   rfl
 
 @[simp]
@@ -94,10 +99,25 @@ theorem associator_inv_apply {X Y Z : Type u} {x : X} {y : Y} {z : Z} :
     (((α_ X Y Z).inv : X ⊗ Y ⊗ Z → (X ⊗ Y) ⊗ Z) x).2 = x.2.2 :=
   rfl
 
+@[simp]
+theorem braiding_hom_apply {X Y : Type u} {x : X} {y : Y} :
+    ((β_ X Y).hom : X ⊗ Y → Y ⊗ X) (x, y) = (y, x) :=
+  rfl
+
+@[simp]
+theorem braiding_inv_apply {X Y : Type u} {x : X} {y : Y} :
+    ((β_ X Y).inv : Y ⊗ X → X ⊗ Y) (y, x) = (x, y) :=
+  rfl
+
+@[simp]
+theorem CartesianMonoidalCategory.lift_apply {X Y Z : Type u} {f : X ⟶ Y} {g : X ⟶ Z} {x : X} :
+    lift f g x = (f x, g x) :=
+  rfl
+
 -- We don't yet have an API for tensor products indexed by finite ordered types,
 -- but it would be nice to state how monoidal functors preserve these.
-/-- If `F` is a monoidal functor out of `Type`, it takes the (n+1)st cartesian power
-of a type to the image of that type, tensored with the image of the nth cartesian power. -/
+/-- If `F` is a monoidal functor out of `Type`, it takes the (n+1)st Cartesian power
+of a type to the image of that type, tensored with the image of the nth Cartesian power. -/
 noncomputable def MonoidalFunctor.mapPi {C : Type*} [Category C] [MonoidalCategory C]
     (F : Type _ ⥤ C) [F.Monoidal] (n : ℕ) (β : Type*) :
     F.obj (Fin (n + 1) → β) ≅ F.obj β ⊗ F.obj (Fin n → β) :=

@@ -3,10 +3,10 @@ Copyright (c) 2021 Sébastien Gouëzel. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Sébastien Gouëzel
 -/
-import Mathlib.Analysis.NormedSpace.HahnBanach.Extension
-import Mathlib.MeasureTheory.Integral.SetIntegral
+import Mathlib.Analysis.Normed.Module.HahnBanach
+import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Measure.Lebesgue.Basic
-import Mathlib.Topology.ContinuousMap.Bounded
+import Mathlib.Topology.ContinuousMap.Bounded.Star
 
 /-!
 # A counterexample on Pettis integrability
@@ -127,7 +127,7 @@ def boundedIntegrableFunctionsIntegralCLM [MeasurableSpace α] (μ : Measure α)
   LinearMap.mkContinuous (E := ↥(boundedIntegrableFunctions μ))
     { toFun := fun f => ∫ x, f.1 x ∂μ
       map_add' := fun f g => integral_add f.2 g.2
-      map_smul' := fun c f => integral_smul c f.1 } (μ univ).toReal
+      map_smul' := fun c f => integral_smul c f.1 } (μ.real univ)
     (by
       intro f
       rw [mul_comm]
@@ -200,7 +200,7 @@ theorem le_bound (f : BoundedAdditiveMeasure α) (s : Set α) : f s ≤ f.C :=
 theorem empty (f : BoundedAdditiveMeasure α) : f ∅ = 0 := by
   have : (∅ : Set α) = ∅ ∪ ∅ := by simp only [empty_union]
   apply_fun f at this
-  rwa [f.additive _ _ (empty_disjoint _), self_eq_add_left] at this
+  rwa [f.additive _ _ (empty_disjoint _), right_eq_add] at this
 
 instance : Neg (BoundedAdditiveMeasure α) :=
   ⟨fun f =>
@@ -216,7 +216,6 @@ theorem neg_apply (f : BoundedAdditiveMeasure α) (s : Set α) : (-f) s = -f s :
 def restrict (f : BoundedAdditiveMeasure α) (t : Set α) : BoundedAdditiveMeasure α where
   toFun s := f (t ∩ s)
   additive' s s' h := by
-    dsimp only
     rw [← f.additive (t ∩ s) (t ∩ s'), inter_union_distrib_left]
     exact h.mono inter_subset_right inter_subset_right
   exists_bound := ⟨f.C, fun s => f.abs_le_bound _⟩
@@ -283,19 +282,19 @@ theorem exists_discrete_support_nonpos (f : BoundedAdditiveMeasure α) :
   have ε_pos : 0 < ε := ht
   have I1 : ∀ n, ε / 2 ≤ f (↑(s (n + 1)) \ ↑(s n)) := by
     intro n
-    rw [div_le_iff₀' (show (0 : ℝ) < 2 by norm_num), hε]
+    rw [div_le_iff₀' (show (0 : ℝ) < 2 by simp), hε]
     convert hF (s n) u using 2
     · dsimp
       ext x
-      simp only [not_exists, mem_iUnion, mem_diff]
+      simp only [u, not_exists, mem_iUnion, mem_diff]
       tauto
     · congr 1
-      simp only [s, Function.iterate_succ', Subtype.coe_mk, union_diff_left, Function.comp]
+      simp only [G, s, Function.iterate_succ', Subtype.coe_mk, union_diff_left, Function.comp]
   have I2 : ∀ n : ℕ, (n : ℝ) * (ε / 2) ≤ f ↑(s n) := by
     intro n
     induction n with
     | zero =>
-      simp only [s, BoundedAdditiveMeasure.empty, id, Nat.cast_zero, zero_mul,
+      simp only [s, empty, BoundedAdditiveMeasure.empty, id, Nat.cast_zero, zero_mul,
         Function.iterate_zero, Subtype.coe_mk, le_rfl]
     | succ n IH =>
       have : (s (n + 1)).1 = (s (n + 1)).1 \ (s n).1 ∪ (s n).1 := by
@@ -361,7 +360,7 @@ theorem discretePart_apply (f : BoundedAdditiveMeasure α) (s : Set α) :
 
 theorem continuousPart_apply_eq_zero_of_countable (f : BoundedAdditiveMeasure α) (s : Set α)
     (hs : s.Countable) : f.continuousPart s = 0 := by
-  simp [continuousPart]
+  simp only [continuousPart, restrict_apply]
   convert f.apply_countable s hs using 2
   ext x
   simp [and_comm]
@@ -369,7 +368,7 @@ theorem continuousPart_apply_eq_zero_of_countable (f : BoundedAdditiveMeasure α
 theorem continuousPart_apply_diff (f : BoundedAdditiveMeasure α) (s t : Set α) (hs : s.Countable) :
     f.continuousPart (t \ s) = f.continuousPart t := by
   conv_rhs => rw [← diff_union_inter t s]
-  rw [additive, self_eq_add_right]
+  rw [additive, left_eq_add]
   · exact continuousPart_apply_eq_zero_of_countable _ _ (hs.mono inter_subset_right)
   · exact Disjoint.mono_right inter_subset_right disjoint_sdiff_self_left
 
@@ -393,13 +392,12 @@ def _root_.ContinuousLinearMap.toBoundedAdditiveMeasure [TopologicalSpace α] [D
     (f : (α →ᵇ ℝ) →L[ℝ] ℝ) : BoundedAdditiveMeasure α where
   toFun s := f (ofNormedAddCommGroupDiscrete (indicator s 1) 1 (norm_indicator_le_one s))
   additive' s t hst := by
-    dsimp only
     have :
       ofNormedAddCommGroupDiscrete (indicator (s ∪ t) 1) 1 (norm_indicator_le_one _) =
         ofNormedAddCommGroupDiscrete (indicator s 1) 1 (norm_indicator_le_one s) +
           ofNormedAddCommGroupDiscrete (indicator t 1) 1 (norm_indicator_le_one t) := by
       ext x; simp [indicator_union_of_disjoint hst]
-    rw [this, f.map_add]
+    grind
   exists_bound :=
     ⟨‖f‖, fun s => by
       have I :
@@ -415,21 +413,17 @@ theorem continuousPart_evalCLM_eq_zero [TopologicalSpace α] [DiscreteTopology �
   calc
     f.continuousPart s = f.continuousPart (s \ {x}) :=
       (continuousPart_apply_diff _ _ _ (countable_singleton x)).symm
-    _ = f (univ \ f.discreteSupport ∩ (s \ {x})) := rfl
+    _ = f (univ \ f.discreteSupport ∩ (s \ {x})) := by simp [continuousPart]
     _ = indicator (univ \ f.discreteSupport ∩ (s \ {x})) 1 x := rfl
     _ = 0 := by simp
 
 theorem toFunctions_toMeasure [MeasurableSpace α] (μ : Measure α) [IsFiniteMeasure μ] (s : Set α)
     (hs : MeasurableSet s) :
-    μ.extensionToBoundedFunctions.toBoundedAdditiveMeasure s = (μ s).toReal := by
-  change
-    μ.extensionToBoundedFunctions
-        (ofNormedAddCommGroupDiscrete (indicator s 1) 1 (norm_indicator_le_one s)) =
-      (μ s).toReal
+    μ.extensionToBoundedFunctions.toBoundedAdditiveMeasure s = μ.real s := by
+  simp only [ContinuousLinearMap.toBoundedAdditiveMeasure]
   rw [extensionToBoundedFunctions_apply]
-  · change ∫ x, s.indicator (fun _ => (1 : ℝ)) x ∂μ = _
-    simp [integral_indicator hs]
-  · change Integrable (indicator s 1) μ
+  · simp [integral_indicator hs]
+  · simp only [coe_ofNormedAddCommGroupDiscrete]
     have : Integrable (fun _ => (1 : ℝ)) μ := integrable_const (1 : ℝ)
     apply
       this.mono' (Measurable.indicator (@measurable_const _ _ _ _ (1 : ℝ)) hs).aestronglyMeasurable
@@ -438,13 +432,14 @@ theorem toFunctions_toMeasure [MeasurableSpace α] (μ : Measure α) [IsFiniteMe
 
 theorem toFunctions_toMeasure_continuousPart [MeasurableSpace α] [MeasurableSingletonClass α]
     (μ : Measure α) [IsFiniteMeasure μ] [NoAtoms μ] (s : Set α) (hs : MeasurableSet s) :
-    μ.extensionToBoundedFunctions.toBoundedAdditiveMeasure.continuousPart s = (μ s).toReal := by
+    μ.extensionToBoundedFunctions.toBoundedAdditiveMeasure.continuousPart s = μ.real s := by
   let f := μ.extensionToBoundedFunctions.toBoundedAdditiveMeasure
-  change f (univ \ f.discreteSupport ∩ s) = (μ s).toReal
+  change f (univ \ f.discreteSupport ∩ s) = μ.real s
   rw [toFunctions_toMeasure]; swap
   · exact
       MeasurableSet.inter
         (MeasurableSet.univ.diff (Countable.measurableSet f.countable_discreteSupport)) hs
+  simp only [measureReal_def]
   congr 1
   rw [inter_comm, ← inter_diff_assoc, inter_univ]
   exact measure_diff_null (f.countable_discreteSupport.measure_zero _)
@@ -456,7 +451,7 @@ end
 
 We construct a subset of `ℝ²`, given as a family of sets, which is large along verticals (i.e.,
 it only misses a countable set along each vertical) but small along horizontals (it is countable
-along horizontals). Such a set can not be measurable as it would contradict Fubini theorem.
+along horizontals). Such a set cannot be measurable as it would contradict Fubini theorem.
 We need the continuum hypothesis to construct it.
 -/
 
@@ -473,7 +468,7 @@ theorem sierpinski_pathological_family (Hcont : #ℝ = ℵ₁) :
         constructor
         · rintro rfl; exact irrefl_of r y h
         · exact asymm h
-      · simp only [true_or, eq_self_iff_true, iff_true]; exact irrefl x
+      · simp only [true_or, iff_true]; exact irrefl x
       · simp only [h, iff_true, or_true]; exact asymm h
     rw [this]
     apply Countable.union _ (countable_singleton _)
@@ -553,11 +548,9 @@ theorem comp_ae_eq_const (Hcont : #ℝ = ℵ₁) (φ : (DiscreteCopy ℝ →ᵇ 
 
 theorem integrable_comp (Hcont : #ℝ = ℵ₁) (φ : (DiscreteCopy ℝ →ᵇ ℝ) →L[ℝ] ℝ) :
     IntegrableOn (fun x => φ (f Hcont x)) (Icc 0 1) := by
-  have :
-    IntegrableOn (fun _ => φ.toBoundedAdditiveMeasure.continuousPart univ) (Icc (0 : ℝ) 1)
-      volume := by
-    simp [integrableOn_const]
-  apply Integrable.congr this (comp_ae_eq_const Hcont φ)
+  have : IntegrableOn (fun _ => φ.toBoundedAdditiveMeasure.continuousPart univ) (Icc (0 : ℝ) 1)
+      volume := by simp
+  exact Integrable.congr this (comp_ae_eq_const Hcont φ)
 
 theorem integral_comp (Hcont : #ℝ = ℵ₁) (φ : (DiscreteCopy ℝ →ᵇ ℝ) →L[ℝ] ℝ) :
     ∫ x in Icc 0 1, φ (f Hcont x) = φ.toBoundedAdditiveMeasure.continuousPart univ := by
@@ -595,7 +588,7 @@ theorem no_pettis_integral (Hcont : #ℝ = ℵ₁) :
     have : g x = evalCLM ℝ x g := rfl
     rw [this, ← h]
     simp
-  simp only [this, ContinuousLinearMap.map_zero] at h
+  simp only [this, map_zero] at h
   specialize h (volume.restrict (Icc (0 : ℝ) 1)).extensionToBoundedFunctions
   simp_rw [toFunctions_toMeasure_continuousPart _ _ MeasurableSet.univ] at h
   simp at h

@@ -3,9 +3,10 @@ Copyright (c) 2024 Joël Riou. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Joël Riou
 -/
-import Mathlib.Algebra.Order.Group.Nat
-import Mathlib.CategoryTheory.Category.Preorder
-import Mathlib.CategoryTheory.EqToHom
+module
+
+public import Mathlib.CategoryTheory.Category.Preorder
+public import Mathlib.CategoryTheory.EqToHom
 
 /-!
 # Functors from the category of the ordered set `ℕ`
@@ -22,6 +23,8 @@ The duals of the above for functors `ℕᵒᵖ ⥤ C` are given by `Functor.ofOp
 `NatTrans.ofOpSequence`.
 
 -/
+
+@[expose] public section
 
 namespace CategoryTheory
 
@@ -49,7 +52,7 @@ def map : ∀ {X : ℕ → C} (_ : ∀ n, X n ⟶ X (n + 1)) (i j : ℕ), i ≤ 
   | _, _, _ + 1, 0 => nofun
   | _, f, k + 1, l + 1 => fun _ ↦ map (fun n ↦ f (n + 1)) k l (by omega)
 
-lemma map_id (i : ℕ) : map f i i (by omega) = 𝟙 _ := by
+lemma map_id (i : ℕ) : map f i i (by lia) = 𝟙 _ := by
   revert X f
   induction i with
   | zero => intros; rfl
@@ -57,7 +60,7 @@ lemma map_id (i : ℕ) : map f i i (by omega) = 𝟙 _ := by
       intro X f
       apply hi
 
-lemma map_le_succ (i : ℕ) : map f i (i + 1) (by omega) = f i := by
+lemma map_le_succ (i : ℕ) : map f i (i + 1) (by lia) = f i := by
   revert X f
   induction i with
   | zero => intros; rfl
@@ -68,36 +71,31 @@ lemma map_le_succ (i : ℕ) : map f i (i + 1) (by omega) = f i := by
 @[reassoc]
 lemma map_comp (i j k : ℕ) (hij : i ≤ j) (hjk : j ≤ k) :
     map f i k (hij.trans hjk) = map f i j hij ≫ map f j k hjk := by
-  revert X f j k
-  induction i with
+  induction i generalizing X j k with
   | zero =>
-      intros X f j
-      revert X f
-      induction j with
+      induction j generalizing X k with
       | zero =>
-          intros X f k hij hjk
           rw [map_id, id_comp]
       | succ j hj =>
-          rintro X f (_|_|k) hij hjk
-          · omega
-          · obtain rfl : j = 0 := by omega
+          obtain (_ | _ | k) := k
+          · lia
+          · obtain rfl : j = 0 := by lia
             rw [map_id, comp_id]
-          · dsimp [map]
-            rw [hj (fun n ↦ f (n + 1)) (k + 1) (by omega) (by omega)]
-            obtain _|j := j
+          · simp only [map, Nat.reduceAdd]
+            rw [hj (fun n ↦ f (n + 1)) (k + 1) (by lia) (by lia)]
+            obtain _ | j := j
             all_goals simp [map]
   | succ i hi =>
-      rintro X f (_|j) (_|k)
-      · omega
-      · omega
-      · omega
-      · intros
-        exact hi _ j k (by omega) (by omega)
+      rcases j, k with ⟨(_ | j), (_ | k)⟩
+      · lia
+      · lia
+      · lia
+      · exact hi _ j k (by lia) (by lia)
 
 -- `map` has good definitional properties when applied to explicit natural numbers
-example : map f 5 5 (by omega) = 𝟙 _ := rfl
-example : map f 0 3 (by omega) = f 0 ≫ f 1 ≫ f 2 := rfl
-example : map f 3 7 (by omega) = f 3 ≫ f 4 ≫ f 5 ≫ f 6 := rfl
+example : map f 5 5 (by lia) = 𝟙 _ := rfl
+example : map f 0 3 (by lia) = f 0 ≫ f 1 ≫ f 2 := rfl
+example : map f 3 7 (by lia) = f 3 ≫ f 4 ≫ f 5 ≫ f 6 := rfl
 
 end OfSequence
 
@@ -157,9 +155,9 @@ morphisms `f : X (n + 1) ⟶ X n` for all `n : ℕ`. -/
 def ofOpSequence : ℕᵒᵖ ⥤ C := (ofSequence (fun n ↦ (f n).op)).leftOp
 
 -- `ofOpSequence` has good definitional properties when applied to explicit natural numbers
-example : (ofOpSequence f).map (homOfLE (show 5 ≤ 5 by omega)).op = 𝟙 _ := rfl
-example : (ofOpSequence f).map (homOfLE (show 0 ≤ 3 by omega)).op = (f 2 ≫ f 1) ≫ f 0 := rfl
-example : (ofOpSequence f).map (homOfLE (show 3 ≤ 7 by omega)).op =
+example : (ofOpSequence f).map (homOfLE (show 5 ≤ 5 by lia)).op = 𝟙 _ := rfl
+example : (ofOpSequence f).map (homOfLE (show 0 ≤ 3 by lia)).op = (f 2 ≫ f 1) ≫ f 0 := rfl
+example : (ofOpSequence f).map (homOfLE (show 3 ≤ 7 by lia)).op =
     ((f 6 ≫ f 5) ≫ f 4) ≫ f 3 := rfl
 
 @[simp]

@@ -3,8 +3,12 @@ Copyright (c) 2020 Joseph Myers. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Joseph Myers
 -/
-import Mathlib.Analysis.Convex.StrictConvexBetween
-import Mathlib.Geometry.Euclidean.Basic
+module
+
+public import Mathlib.Analysis.Convex.StrictConvexBetween
+public import Mathlib.Analysis.InnerProductSpace.Convex
+public import Mathlib.Analysis.Normed.Affine.Convex
+public import Mathlib.Geometry.Euclidean.Basic
 
 /-!
 # Spheres
@@ -16,6 +20,11 @@ Euclidean affine spaces.
 
 * `EuclideanGeometry.Sphere` bundles a `center` and a `radius`.
 
+* `EuclideanGeometry.Sphere.IsDiameter` is the property of two points being the two endpoints
+  of a diameter of a sphere.
+
+* `EuclideanGeometry.Sphere.ofDiameter` constructs the sphere on a given diameter.
+
 * `EuclideanGeometry.Cospherical` is the property of a set of points being equidistant from some
   point.
 
@@ -23,6 +32,8 @@ Euclidean affine spaces.
   coplanar.
 
 -/
+
+@[expose] public section
 
 
 noncomputable section
@@ -41,7 +52,7 @@ be positive; that should be given as a hypothesis to lemmas that require it. -/
 structure Sphere [MetricSpace P] where
   /-- center of this sphere -/
   center : P
-  /-- radius of the sphere: not required to be positive -/
+  /-- radius of the sphere; not required to be positive -/
   radius : ℝ
 
 variable {P}
@@ -69,15 +80,11 @@ theorem Sphere.mk_radius (c : P) (r : ℝ) : (⟨c, r⟩ : Sphere P).radius = r 
 theorem Sphere.mk_center_radius (s : Sphere P) : (⟨s.center, s.radius⟩ : Sphere P) = s := by
   ext <;> rfl
 
-/- Porting note: is a syntactic tautology
-theorem Sphere.coe_def (s : Sphere P) : (s : Set P) = Metric.sphere s.center s.radius :=
-  rfl -/
-
 @[simp]
 theorem Sphere.coe_mk (c : P) (r : ℝ) : ↑(⟨c, r⟩ : Sphere P) = Metric.sphere c r :=
   rfl
 
--- @[simp] -- Porting note: simp-normal form is `Sphere.mem_coe'`
+-- simp-normal form is `Sphere.mem_coe'`
 theorem Sphere.mem_coe {p : P} {s : Sphere P} : p ∈ (s : Set P) ↔ p ∈ s :=
   Iff.rfl
 
@@ -123,6 +130,12 @@ theorem dist_center_eq_dist_center_of_mem_sphere {p₁ p₂ : P} {s : Sphere P} 
 theorem dist_center_eq_dist_center_of_mem_sphere' {p₁ p₂ : P} {s : Sphere P} (hp₁ : p₁ ∈ s)
     (hp₂ : p₂ ∈ s) : dist s.center p₁ = dist s.center p₂ := by
   rw [mem_sphere'.1 hp₁, mem_sphere'.1 hp₂]
+
+lemma Sphere.radius_nonneg_of_mem {s : Sphere P} {p : P} (h : p ∈ s) : 0 ≤ s.radius :=
+  Metric.nonneg_of_mem_sphere h
+
+@[simp] lemma Sphere.center_mem_iff {s : Sphere P} : s.center ∈ s ↔ s.radius = 0 := by
+  simp [mem_sphere, eq_comm]
 
 /-- A set of points is cospherical if they are equidistant from some
 point. In two dimensions, this is the same thing as being
@@ -170,6 +183,12 @@ section NormedSpace
 
 variable [NormedAddCommGroup V] [NormedSpace ℝ V] [MetricSpace P] [NormedAddTorsor V P]
 
+lemma Sphere.nonempty_iff [Nontrivial V] {s : Sphere P} : (s : Set P).Nonempty ↔ 0 ≤ s.radius := by
+  refine ⟨fun ⟨p, hp⟩ ↦ radius_nonneg_of_mem hp, fun h ↦ ?_⟩
+  obtain ⟨v, hv⟩ := (NormedSpace.sphere_nonempty (x := (0 : V)) (r := s.radius)).2 h
+  refine ⟨v +ᵥ s.center, ?_⟩
+  simpa [mem_sphere] using hv
+
 include V in
 /-- Two points are cospherical. -/
 theorem cospherical_pair (p₁ p₂ : P) : Cospherical ({p₁, p₂} : Set P) :=
@@ -199,6 +218,104 @@ theorem concyclic_singleton (p : P) : Concyclic ({p} : Set P) :=
 /-- Two points are concyclic. -/
 theorem concyclic_pair (p₁ p₂ : P) : Concyclic ({p₁, p₂} : Set P) :=
   ⟨cospherical_pair p₁ p₂, coplanar_pair ℝ p₁ p₂⟩
+
+namespace Sphere
+
+/-- `s.IsDiameter p₁ p₂` says that `p₁` and `p₂` are the two endpoints of a diameter of `s`. -/
+structure IsDiameter (s : Sphere P) (p₁ p₂ : P) : Prop where
+  left_mem : p₁ ∈ s
+  midpoint_eq_center : midpoint ℝ p₁ p₂ = s.center
+
+variable {s : Sphere P} {p₁ p₂ p₃ : P}
+
+lemma IsDiameter.right_mem (h : s.IsDiameter p₁ p₂) : p₂ ∈ s := by
+  rw [mem_sphere, ← mem_sphere.1 h.left_mem, ← h.midpoint_eq_center,
+    dist_left_midpoint_eq_dist_right_midpoint]
+
+protected lemma IsDiameter.symm (h : s.IsDiameter p₁ p₂) : s.IsDiameter p₂ p₁ :=
+  ⟨h.right_mem, midpoint_comm (R := ℝ) p₁ p₂ ▸ h.midpoint_eq_center⟩
+
+lemma isDiameter_comm : s.IsDiameter p₁ p₂ ↔ s.IsDiameter p₂ p₁ :=
+  ⟨IsDiameter.symm, IsDiameter.symm⟩
+
+lemma isDiameter_iff_left_mem_and_midpoint_eq_center :
+    s.IsDiameter p₁ p₂ ↔ p₁ ∈ s ∧ midpoint ℝ p₁ p₂ = s.center :=
+  ⟨fun h ↦ ⟨h.1, h.2⟩, fun h ↦ ⟨h.1, h.2⟩⟩
+
+lemma isDiameter_iff_right_mem_and_midpoint_eq_center :
+    s.IsDiameter p₁ p₂ ↔ p₂ ∈ s ∧ midpoint ℝ p₁ p₂ = s.center :=
+  ⟨fun h ↦ ⟨h.right_mem, h.2⟩, fun h ↦ IsDiameter.symm ⟨h.1, midpoint_comm (R := ℝ) p₁ p₂ ▸ h.2⟩⟩
+
+lemma IsDiameter.pointReflection_center_left (h : s.IsDiameter p₁ p₂) :
+    Equiv.pointReflection s.center p₁ = p₂ := by
+  rw [← h.midpoint_eq_center, Equiv.pointReflection_midpoint_left]
+
+lemma IsDiameter.pointReflection_center_right (h : s.IsDiameter p₁ p₂) :
+    Equiv.pointReflection s.center p₂ = p₁ := by
+  rw [← h.midpoint_eq_center, Equiv.pointReflection_midpoint_right]
+
+lemma isDiameter_iff_left_mem_and_pointReflection_center_left :
+    s.IsDiameter p₁ p₂ ↔ p₁ ∈ s ∧ Equiv.pointReflection s.center p₁ = p₂ :=
+  ⟨fun h ↦ ⟨h.1, h.pointReflection_center_left⟩, fun h ↦ ⟨h.1, by simp [← h.2]⟩⟩
+
+lemma isDiameter_iff_right_mem_and_pointReflection_center_right :
+    s.IsDiameter p₁ p₂ ↔ p₂ ∈ s ∧ Equiv.pointReflection s.center p₂ = p₁ := by
+  rw [isDiameter_comm, isDiameter_iff_left_mem_and_pointReflection_center_left]
+
+lemma IsDiameter.right_eq_of_isDiameter (h₁₂ : s.IsDiameter p₁ p₂) (h₁₃ : s.IsDiameter p₁ p₃) :
+    p₂ = p₃ := by
+  rw [← h₁₂.pointReflection_center_left, ← h₁₃.pointReflection_center_left]
+
+lemma IsDiameter.left_eq_of_isDiameter (h₁₃ : s.IsDiameter p₁ p₃) (h₂₃ : s.IsDiameter p₂ p₃) :
+    p₁ = p₂ := by
+  rw [← h₁₃.pointReflection_center_right, ← h₂₃.pointReflection_center_right]
+
+lemma IsDiameter.dist_left_right (h : s.IsDiameter p₁ p₂) : dist p₁ p₂ = 2 * s.radius := by
+  rw [← mem_sphere.1 h.left_mem, ← h.midpoint_eq_center, dist_left_midpoint]
+  simp
+
+lemma IsDiameter.dist_left_right_div_two (h : s.IsDiameter p₁ p₂) :
+    (dist p₁ p₂) / 2 = s.radius := by
+  simp [h.dist_left_right]
+
+lemma IsDiameter.left_eq_right_iff (h : s.IsDiameter p₁ p₂) : p₁ = p₂ ↔ s.radius = 0 := by
+  rw [← dist_eq_zero, h.dist_left_right]
+  simp
+
+lemma IsDiameter.left_ne_right_iff_radius_ne_zero (h : s.IsDiameter p₁ p₂) :
+    p₁ ≠ p₂ ↔ s.radius ≠ 0 :=
+  h.left_eq_right_iff.not
+
+lemma IsDiameter.left_ne_right_iff_radius_pos (h : s.IsDiameter p₁ p₂) :
+    p₁ ≠ p₂ ↔ 0 < s.radius := by
+  rw [h.left_ne_right_iff_radius_ne_zero, lt_iff_le_and_ne]
+  simp [radius_nonneg_of_mem h.left_mem, eq_comm]
+
+protected lemma IsDiameter.wbtw (h : s.IsDiameter p₁ p₂) : Wbtw ℝ p₁ s.center p₂ := by
+  rw [← h.midpoint_eq_center]
+  exact wbtw_midpoint _ _ _
+
+protected lemma IsDiameter.sbtw (h : s.IsDiameter p₁ p₂) (hr : s.radius ≠ 0) :
+    Sbtw ℝ p₁ s.center p₂ := by
+  rw [← h.midpoint_eq_center]
+  exact sbtw_midpoint_of_ne _ (h.left_ne_right_iff_radius_ne_zero.2 hr)
+
+/-- Construct the sphere with the given diameter. -/
+protected def ofDiameter (p₁ p₂ : P) : Sphere P :=
+  ⟨midpoint ℝ p₁ p₂, (dist p₁ p₂) / 2⟩
+
+lemma isDiameter_ofDiameter (p₁ p₂ : P) : (Sphere.ofDiameter p₁ p₂).IsDiameter p₁ p₂ :=
+  ⟨by simp [Sphere.ofDiameter, mem_sphere, inv_mul_eq_div], rfl⟩
+
+lemma IsDiameter.ofDiameter_eq (h : s.IsDiameter p₁ p₂) : .ofDiameter p₁ p₂ = s := by
+  ext
+  · simp [Sphere.ofDiameter, h.midpoint_eq_center]
+  · simp [Sphere.ofDiameter, ← h.dist_left_right_div_two]
+
+lemma isDiameter_iff_ofDiameter_eq : s.IsDiameter p₁ p₂ ↔ .ofDiameter p₁ p₂ = s :=
+  ⟨IsDiameter.ofDiameter_eq, by rintro rfl; exact isDiameter_ofDiameter _ _⟩
+
+end Sphere
 
 end NormedSpace
 
@@ -307,7 +424,7 @@ theorem inner_pos_or_eq_of_dist_le_radius {s : Sphere P} {p₁ p₂ : P} (hp₁ 
       · rw [norm_pos_iff, vsub_ne_zero]
         rintro rfl
         rw [← hp₁] at hp₂'
-        refine (dist_nonneg.not_lt : ¬dist p₂ s.center < 0) ?_
+        refine (dist_nonneg.not_gt : ¬dist p₂ s.center < 0) ?_
         simpa using hp₂'
     · rw [← hp₁, @dist_eq_norm_vsub V, @dist_eq_norm_vsub V] at hp₂'
       nth_rw 1 [← hp₂']
@@ -348,6 +465,28 @@ theorem sbtw_of_collinear_of_dist_center_lt_radius {s : Sphere P} {p₁ p₂ p�
     (h : Collinear ℝ ({p₁, p₂, p₃} : Set P)) (hp₁ : p₁ ∈ s) (hp₂ : dist p₂ s.center < s.radius)
     (hp₃ : p₃ ∈ s) (hp₁p₃ : p₁ ≠ p₃) : Sbtw ℝ p₁ p₂ p₃ :=
   h.sbtw_of_dist_eq_of_dist_lt hp₁ hp₂ hp₃ hp₁p₃
+
+namespace Sphere
+
+variable {s : Sphere P} {p₁ p₂ : P}
+
+lemma isDiameter_iff_mem_and_mem_and_dist :
+    s.IsDiameter p₁ p₂ ↔ p₁ ∈ s ∧ p₂ ∈ s ∧ dist p₁ p₂ = 2 * s.radius := by
+  refine ⟨fun h ↦ ⟨h.left_mem, h.right_mem, h.dist_left_right⟩, fun ⟨h₁, h₂, hr⟩ ↦ ⟨h₁, ?_⟩⟩
+  rw [midpoint_eq_iff, AffineEquiv.pointReflection_apply, eq_comm, eq_vadd_iff_vsub_eq]
+  apply eq_of_norm_eq_of_norm_add_eq
+  · simp_rw [← dist_eq_norm_vsub, mem_sphere'.1 h₁, mem_sphere.1 h₂]
+  · simp_rw [vsub_add_vsub_cancel, ← dist_eq_norm_vsub, mem_sphere'.1 h₁, mem_sphere.1 h₂]
+    rw [dist_comm, hr, two_mul]
+
+lemma isDiameter_iff_mem_and_mem_and_wbtw :
+    s.IsDiameter p₁ p₂ ↔ p₁ ∈ s ∧ p₂ ∈ s ∧ Wbtw ℝ p₁ s.center p₂:= by
+  refine ⟨fun h ↦ ⟨h.left_mem, h.right_mem, h.wbtw⟩, fun ⟨h₁, h₂, hr⟩ ↦ ?_⟩
+  have hd := hr.dist_add_dist
+  rw [mem_sphere.1 h₁, mem_sphere'.1 h₂, ← two_mul, eq_comm] at hd
+  exact isDiameter_iff_mem_and_mem_and_dist.2 ⟨h₁, h₂, hd⟩
+
+end Sphere
 
 end EuclideanSpace
 

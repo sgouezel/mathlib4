@@ -3,9 +3,11 @@ Copyright (c) 2024 Christian Merten. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Christian Merten
 -/
-import Mathlib.CategoryTheory.Galois.Full
-import Mathlib.CategoryTheory.Galois.Topology
-import Mathlib.Topology.Algebra.OpenSubgroup
+module
+
+public import Mathlib.CategoryTheory.Galois.Full
+public import Mathlib.CategoryTheory.Galois.Topology
+public import Mathlib.Topology.Algebra.OpenSubgroup
 
 /-!
 
@@ -35,6 +37,8 @@ For the case `Y = Aut F ⧸ U` we closely follow the second part of Stacks Proje
 
 -/
 
+@[expose] public section
+
 noncomputable section
 
 universe u₁ u₂
@@ -49,7 +53,7 @@ open Limits Functor
 
 variable [GaloisCategory C] [FiberFunctor F]
 
-variable {G : Type*} [Group G] [TopologicalSpace G] [TopologicalGroup G] [CompactSpace G]
+variable {G : Type*} [Group G] [TopologicalSpace G] [IsTopologicalGroup G] [CompactSpace G]
 
 private local instance fintypeQuotient (H : OpenSubgroup (G)) :
     Fintype (G ⧸ (H : Subgroup (G))) :=
@@ -64,7 +68,7 @@ private local instance fintypeQuotientStabilizer {X : Type*} [MulAction G X]
 /-- If `X` is a finite discrete `G`-set, it can be written as the finite disjoint union
 of quotients of the form `G ⧸ Uᵢ` for open subgroups `(Uᵢ)`. Note that this
 is simply the decomposition into orbits. -/
-lemma has_decomp_quotients (X : Action FintypeCat (MonCat.of G))
+lemma has_decomp_quotients (X : Action FintypeCat G)
     [TopologicalSpace X.V] [DiscreteTopology X.V] [ContinuousSMul G X.V] :
     ∃ (ι : Type) (_ : Finite ι) (f : ι → OpenSubgroup (G)),
       Nonempty ((∐ fun i ↦ G ⧸ₐ (f i).toSubgroup) ≅ X) := by
@@ -82,7 +86,7 @@ lemma has_decomp_quotients (X : Action FintypeCat (MonCat.of G))
     have hrinj : Function.Injective r.hom :=
       (ConcreteCategory.mono_iff_injective_of_preservesPullback r).mp <| mono_comp _ _
     let t₁ : TopologicalSpace (G × (f i).V) := inferInstance
-    show @Continuous _ _ _ ⊥ q'
+    change @Continuous _ _ _ ⊥ q'
     have : TopologicalSpace.induced r.hom inferInstance = ⊥ := by
       rw [← le_bot_iff]
       exact fun s _ ↦ ⟨r.hom '' s, ⟨isOpen_discrete (r.hom '' s), Set.preimage_image_eq s hrinj⟩⟩
@@ -152,7 +156,7 @@ private def coconeQuotientDiag :
     rw [← cancel_epi (u.inv), Iso.inv_hom_id_assoc]
     apply Action.hom_ext
     ext (x : Aut F ⧸ U.toSubgroup)
-    induction' m, x using Quotient.inductionOn₂ with σ μ
+    induction m, x using Quotient.inductionOn₂ with | _ σ μ
     suffices h : ⟦μ * σ⁻¹⟧ = ⟦μ⟧ by
       simp only [quotientToQuotientOfLE_hom_mk, quotientDiag_map,
         functorToAction_map_quotientToEndObjectHom V _ u]
@@ -174,14 +178,14 @@ private def coconeQuotientDiagDesc
     have h2 : (J'.map m).hom (u.inv.hom ⟦τ⟧) = u.inv.hom ⟦σ⟧ := by
       simp only [comp_obj, quotientDiag_obj, Functor.comp_map, quotientDiag_map, J',
         functorToAction_map_quotientToEndObjectHom V h u m]
-      show (u.inv ≫ u.hom ≫ _ ≫ u.inv).hom ⟦τ⟧ = u.inv.hom ⟦σ⟧
+      change (u.inv ≫ u.hom ≫ _ ≫ u.inv).hom ⟦τ⟧ = u.inv.hom ⟦σ⟧
       simp [m]
     simp only [← h2, const_obj_obj, Action.comp_hom, FintypeCat.comp_apply]
   comm g := by
     ext (x : Aut F ⧸ V.toSubgroup)
-    induction' x using Quotient.inductionOn with σ
+    induction x using Quotient.inductionOn with | _ σ
     simp only [const_obj_obj]
-    show (((Aut F ⧸ₐ U.toSubgroup).ρ g ≫ u.inv.hom) ≫ (s.ι.app (SingleObj.star _)).hom) ⟦σ⟧ =
+    change (((Aut F ⧸ₐ U.toSubgroup).ρ g ≫ u.inv.hom) ≫ (s.ι.app (SingleObj.star _)).hom) ⟦σ⟧ =
       ((s.ι.app (SingleObj.star _)).hom ≫ s.pt.ρ g) (u.inv.hom ⟦σ⟧)
     have : ((functorToAction F).obj A).ρ g ≫ (s.ι.app (SingleObj.star _)).hom =
         (s.ι.app (SingleObj.star _)).hom ≫ s.pt.ρ g :=
@@ -197,13 +201,13 @@ private def coconeQuotientDiagIsColimit :
     apply (cancel_epi u.inv).mp
     apply Action.hom_ext
     ext (x : Aut F ⧸ U.toSubgroup)
-    induction' x using Quotient.inductionOn with σ
+    induction x using Quotient.inductionOn
     simp
     rfl
   uniq s f hf := by
     apply Action.hom_ext
     ext (x : Aut F ⧸ V.toSubgroup)
-    induction' x using Quotient.inductionOn with σ
+    induction x using Quotient.inductionOn
     simp [← hf (SingleObj.star _)]
 
 end
@@ -224,8 +228,8 @@ lemma exists_lift_of_quotient_openSubgroup (V : OpenSubgroup (Aut F)) :
   have h1 (σ : Aut F) (σinU : σ ∈ U) : σ.hom.app A = 𝟙 (F.obj A) := by
     have hi : (Aut F ⧸ₐ MulAction.stabilizer (Aut F) a).ρ σ = 𝟙 _ := by
       refine FintypeCat.hom_ext _ _ (fun x ↦ ?_)
-      induction' x using Quotient.inductionOn with τ
-      show ⟦σ * τ⟧ = ⟦τ⟧
+      induction x using Quotient.inductionOn with | _ τ
+      change ⟦σ * τ⟧ = ⟦τ⟧
       apply Quotient.sound
       apply (QuotientGroup.leftRel_apply).mpr
       simp only [mul_inv_rev]
@@ -250,7 +254,7 @@ If `X` is a finite, discrete `Aut F`-set with continuous `Aut F`-action, then
 there exists `A : C` such that `F.obj A ≅ X` as `Aut F`-sets.
 -/
 @[stacks 0BN4 "Essential surjectivity part"]
-theorem exists_lift_of_continuous (X : Action FintypeCat (MonCat.of (Aut F)))
+theorem exists_lift_of_continuous (X : Action FintypeCat (Aut F))
     [TopologicalSpace X.V] [DiscreteTopology X.V] [ContinuousSMul (Aut F) X.V] :
     ∃ A, Nonempty ((functorToAction F).obj A ≅ X) := by
   obtain ⟨ι, hfin, f, ⟨u⟩⟩ := has_decomp_quotients X

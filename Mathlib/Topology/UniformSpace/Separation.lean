@@ -3,9 +3,11 @@ Copyright (c) 2017 Johannes Hölzl. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Johannes Hölzl, Patrick Massot, Yury Kudryashov
 -/
-import Mathlib.Tactic.ApplyFun
-import Mathlib.Topology.UniformSpace.Basic
-import Mathlib.Topology.Separation.Basic
+module
+
+public import Mathlib.Tactic.ApplyFun
+public import Mathlib.Topology.Separation.Regular
+public import Mathlib.Topology.UniformSpace.Basic
 
 /-!
 # Hausdorff properties of uniform spaces. Separation quotient.
@@ -73,10 +75,10 @@ by defining `SeparationQuotient.lift'` and `SeparationQuotient.map` operations.
 
 ## Implementation notes
 
-This files used to contain definitions of `separationRel α` and `UniformSpace.SeparationQuotient α`.
+This file used to contain definitions of `separationRel α` and `UniformSpace.SeparationQuotient α`.
 These definitions were equal (but not definitionally equal)
 to `{x : α × α | Inseparable x.1 x.2}` and `SeparationQuotient α`, respectively,
-and were added to the library before their geneeralizations to topological spaces.
+and were added to the library before their generalizations to topological spaces.
 
 In https://github.com/leanprover-community/mathlib4/pull/10644, we migrated from these definitions
 to more general `Inseparable` and `SeparationQuotient`.
@@ -94,6 +96,8 @@ so it was not done in https://github.com/leanprover-community/mathlib4/pull/1064
 
 uniform space, separated space, Hausdorff space, separation quotient
 -/
+
+@[expose] public section
 
 open Filter Set Function Topology Uniformity UniformSpace
 
@@ -137,7 +141,7 @@ theorem inseparable_iff_clusterPt_uniformity {x y : α} :
 
 theorem t0Space_iff_uniformity :
     T0Space α ↔ ∀ x y, (∀ r ∈ 𝓤 α, (x, y) ∈ r) → x = y := by
-  simp only [t0Space_iff_inseparable, inseparable_iff_ker_uniformity, mem_ker, id]
+  simp only [t0Space_iff_inseparable, inseparable_iff_ker_uniformity, mem_ker]
 
 theorem t0Space_iff_uniformity' :
     T0Space α ↔ Pairwise fun x y ↦ ∃ r ∈ 𝓤 α, (x, y) ∉ r := by
@@ -158,7 +162,7 @@ theorem eq_of_uniformity_basis {α : Type*} [UniformSpace α] [T0Space α] {ι :
   (hs.inseparable_iff_uniformity.2 @h).eq
 
 theorem eq_of_forall_symmetric {α : Type*} [UniformSpace α] [T0Space α] {x y : α}
-    (h : ∀ {V}, V ∈ 𝓤 α → SymmetricRel V → (x, y) ∈ V) : x = y :=
+    (h : ∀ {V}, V ∈ 𝓤 α → SetRel.IsSymm V → (x, y) ∈ V) : x = y :=
   eq_of_uniformity_basis hasBasis_symmetric (by simpa)
 
 theorem eq_of_clusterPt_uniformity [T0Space α] {x y : α} (h : ClusterPt (x, y) (𝓤 α)) : x = y :=
@@ -167,9 +171,9 @@ theorem eq_of_clusterPt_uniformity [T0Space α] {x y : α} (h : ClusterPt (x, y)
 theorem Filter.Tendsto.inseparable_iff_uniformity {β} {l : Filter β} [NeBot l] {f g : β → α}
     {a b : α} (ha : Tendsto f l (𝓝 a)) (hb : Tendsto g l (𝓝 b)) :
     Inseparable a b ↔ Tendsto (fun x ↦ (f x, g x)) l (𝓤 α) := by
-  refine ⟨fun h ↦ (ha.prod_mk_nhds hb).mono_right h.nhds_le_uniformity, fun h ↦ ?_⟩
+  refine ⟨fun h ↦ (ha.prodMk_nhds hb).mono_right h.nhds_le_uniformity, fun h ↦ ?_⟩
   rw [inseparable_iff_clusterPt_uniformity]
-  exact (ClusterPt.of_le_nhds (ha.prod_mk_nhds hb)).mono h
+  exact (ClusterPt.of_le_nhds (ha.prodMk_nhds hb)).mono h
 
 theorem isClosed_of_spaced_out [T0Space α] {V₀ : Set (α × α)} (V₀_in : V₀ ∈ 𝓤 α) {s : Set α}
     (hs : s.Pairwise fun x y => (x, y) ∉ V₀) : IsClosed s := by
@@ -184,7 +188,7 @@ theorem isClosed_of_spaced_out [T0Space α] {V₀ : Set (α × α)} (V₀_in : V
   rcases hx (inter_mem V₁_in V_in) with ⟨z, hz, hz'⟩
   obtain rfl : z = y := by
     by_contra hzy
-    exact hs hz' hy' hzy (h_comp <| mem_comp_of_mem_ball V₁_symm (ball_inter_left x _ _ hz) hy)
+    exact hs hz' hy' hzy (h_comp <| mem_comp_of_mem_ball (ball_inter_left x _ _ hz) hy)
   exact ball_inter_right x _ _ hz
 
 theorem isClosed_range_of_spaced_out {ι} [T0Space α] {V₀ : Set (α × α)} (V₀_in : V₀ ∈ 𝓤 α)
@@ -212,7 +216,7 @@ instance instUniformSpace : UniformSpace (SeparationQuotient α) where
   comp := fun t ht ↦ by
     rcases comp_open_symm_mem_uniformity_sets ht with ⟨U, hU, hUo, -, hUt⟩
     refine mem_of_superset (mem_lift' <| image_mem_map hU) ?_
-    simp only [subset_def, Prod.forall, mem_compRel, mem_image, Prod.ext_iff]
+    simp only [subset_def, Prod.forall, SetRel.mem_comp, mem_image, Prod.ext_iff]
     rintro _ _ ⟨_, ⟨⟨x, y⟩, hxyU, rfl, rfl⟩, ⟨⟨y', z⟩, hyzU, hy, rfl⟩⟩
     have : y' ⤳ y := (mk_eq_mk.1 hy).specializes
     exact @hUt (x, z) ⟨y', this.mem_open (UniformSpace.isOpen_ball _ hUo) hxyU, hyzU⟩
@@ -253,7 +257,7 @@ open Classical in
 TODO: unify with `SeparationQuotient.lift`. -/
 def lift' [T0Space β] (f : α → β) : SeparationQuotient α → β :=
   if hc : UniformContinuous f then lift f fun _ _ h => (h.map hc.continuous).eq
-  else fun x => f (Nonempty.some ⟨x.out'⟩)
+  else fun x => f (Nonempty.some ⟨x.out⟩)
 
 theorem lift'_mk [T0Space β] {f : α → β} (h : UniformContinuous f) (a : α) :
     lift' f (mk a) = f a := by rw [lift', dif_pos h, lift_mk]

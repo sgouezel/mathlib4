@@ -3,9 +3,12 @@ Copyright (c) 2021 Aaron Anderson. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Aaron Anderson
 -/
-import Mathlib.ModelTheory.Ultraproducts
-import Mathlib.ModelTheory.Bundled
-import Mathlib.ModelTheory.Skolem
+module
+
+public import Mathlib.ModelTheory.Ultraproducts
+public import Mathlib.ModelTheory.Bundled
+public import Mathlib.ModelTheory.Skolem
+public import Mathlib.Order.Filter.AtTopBot.Basic
 
 /-!
 # First-Order Satisfiability
@@ -40,13 +43,13 @@ This file deals with the satisfiability of first-order theories, as well as equi
   of `L`. By Löwenheim-Skolem, this is equivalent to satisfiability in any universe.
 -/
 
+@[expose] public section
+
 
 
 universe u v w w'
 
 open Cardinal CategoryTheory
-
-open Cardinal FirstOrder
 
 namespace FirstOrder
 
@@ -111,7 +114,7 @@ theorem isSatisfiable_iff_isFinitelySatisfiable {T : L.Theory} :
                 Theory.realize_sentence_of_mem (s.map (Function.Embedding.subtype fun x => x ∈ T))
                   ?_⟩)
         simp only [Finset.coe_map, Function.Embedding.coe_subtype, Set.mem_image, Finset.mem_coe,
-          Subtype.exists, Subtype.coe_mk, exists_and_right, exists_eq_right]
+          Subtype.exists, exists_and_right, exists_eq_right]
         exact ⟨hφ, h' (Finset.mem_singleton_self _)⟩
       exact ⟨ModelType.of T M'⟩⟩
 
@@ -192,7 +195,7 @@ variable (L)
 /-- A version of The Downward Löwenheim–Skolem theorem where the structure `N` elementarily embeds
 into `M`, but is not by type a substructure of `M`, and thus can be chosen to belong to the universe
 of the cardinal `κ`.
- -/
+-/
 theorem exists_elementaryEmbedding_card_eq_of_le (M : Type w') [L.Structure M] [Nonempty M]
     (κ : Cardinal.{w}) (h1 : ℵ₀ ≤ κ) (h2 : lift.{w} L.card ≤ Cardinal.lift.{max u v} κ)
     (h3 : lift.{w'} κ ≤ Cardinal.lift.{w} #M) :
@@ -208,8 +211,6 @@ theorem exists_elementaryEmbedding_card_eq_of_le (M : Type w') [L.Structure M] [
   simp only [Equiv.bundledInduced_α, lift_mk_shrink']
 
 section
--- Porting note: This instance interrupts synthesizing instances.
-attribute [-instance] FirstOrder.Language.withConstants_expansion
 
 /-- The **Upward Löwenheim–Skolem Theorem**: If `κ` is a cardinal greater than the cardinalities of
 `L` and an infinite `L`-structure `M`, then `M` has an elementary extension of cardinality `κ`. -/
@@ -269,7 +270,6 @@ theorem exists_model_card_eq (h : ∃ M : ModelType.{u, v, max u v} T, Infinite 
     ∃ N : ModelType.{u, v, w} T, #N = κ := by
   cases h with
   | intro M MI =>
-    haveI := MI
     obtain ⟨N, hN, rfl⟩ := exists_elementarilyEquivalent_card_eq L M κ h1 h2
     haveI : Nonempty N := hN.nonempty
     exact ⟨hN.theory_model.bundled, rfl⟩
@@ -281,7 +281,6 @@ variable (T)
 def ModelsBoundedFormula (φ : L.BoundedFormula α n) : Prop :=
   ∀ (M : ModelType.{u, v, max u v w} T) (v : α → M) (xs : Fin n → M), φ.Realize v xs
 
--- Porting note: In Lean3 it was `⊨` but ambiguous.
 @[inherit_doc FirstOrder.Language.Theory.ModelsBoundedFormula]
 infixl:51 " ⊨ᵇ " => ModelsBoundedFormula -- input using \|= or \vDash, but not using \models
 
@@ -374,8 +373,8 @@ theory iff there is a finite subset `T0` of the theory such that `φ` is modeled
 theorem models_iff_finset_models {φ : L.Sentence} :
     T ⊨ᵇ φ ↔ ∃ T0 : Finset L.Sentence, (T0 : L.Theory) ⊆ T ∧ (T0 : L.Theory) ⊨ᵇ φ := by
   simp only [models_iff_not_satisfiable]
-  rw [← not_iff_not, not_not, isSatisfiable_iff_isFinitelySatisfiable, IsFinitelySatisfiable]
-  push_neg
+  rw [isSatisfiable_iff_isFinitelySatisfiable, IsFinitelySatisfiable]
+  contrapose!
   letI := Classical.decEq (Sentence L)
   constructor
   · intro h T0 hT0
@@ -394,7 +393,7 @@ def IsComplete (T : L.Theory) : Prop :=
 namespace IsComplete
 
 theorem models_not_iff (h : T.IsComplete) (φ : L.Sentence) : T ⊨ᵇ φ.not ↔ ¬T ⊨ᵇ φ := by
-  cases' h.2 φ with hφ hφn
+  rcases h.2 φ with hφ | hφn
   · simp only [hφ, not_true, iff_false]
     rw [models_sentence_iff, not_forall]
     refine ⟨h.1.some, ?_⟩
@@ -407,7 +406,7 @@ theorem models_not_iff (h : T.IsComplete) (φ : L.Sentence) : T ⊨ᵇ φ.not �
 
 theorem realize_sentence_iff (h : T.IsComplete) (φ : L.Sentence) (M : Type*) [L.Structure M]
     [M ⊨ T] [Nonempty M] : M ⊨ φ ↔ T ⊨ᵇ φ := by
-  cases' h.2 φ with hφ hφn
+  rcases h.2 φ with hφ | hφn
   · exact iff_of_true (hφ.realize_sentence M) hφ
   · exact
       iff_of_false ((Sentence.realize_not M).1 (hφn.realize_sentence M))
@@ -476,8 +475,7 @@ theorem Categorical.isComplete (h : κ.Categorical T) (h1 : ℵ₀ ≤ κ)
   ⟨hS, fun φ => by
     obtain ⟨_, _⟩ := Theory.exists_model_card_eq ⟨hS.some, hT hS.some⟩ κ h1 h2
     rw [Theory.models_sentence_iff, Theory.models_sentence_iff]
-    by_contra! con
-    obtain ⟨⟨MF, hMF⟩, MT, hMT⟩ := con
+    by_contra! ⟨⟨MF, hMF⟩, MT, hMT⟩
     rw [Sentence.realize_not, Classical.not_not] at hMT
     refine hMF ?_
     haveI := hT MT

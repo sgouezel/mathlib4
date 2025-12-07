@@ -3,12 +3,16 @@ Copyright (c) 2024 Michael Stoll. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Michael Stoll
 -/
-import Mathlib.NumberTheory.MulChar.Basic
-import Mathlib.RingTheory.RootsOfUnity.Complex
+module
+
+public import Mathlib.NumberTheory.MulChar.Basic
+public import Mathlib.RingTheory.RootsOfUnity.Complex
 
 /-!
 # Further Results on multiplicative characters
 -/
+
+@[expose] public section
 
 namespace MulChar
 
@@ -82,7 +86,7 @@ noncomputable def ofRootOfUnity {ζ : Rˣ} (hζ : ζ ∈ rootsOfUnity (Fintype.c
   have : orderOf ζ ∣ Fintype.card Mˣ :=
     orderOf_dvd_iff_pow_eq_one.mpr <| (mem_rootsOfUnity _ ζ).mp hζ
   refine ofUnitHom <| monoidHomOfForallMemZpowers hg <| this.trans <| dvd_of_eq ?_
-  rw [orderOf_generator_eq_natCard hg, Nat.card_eq_fintype_card]
+  rw [orderOf_eq_card_of_forall_mem_zpowers hg, Nat.card_eq_fintype_card]
 
 lemma ofRootOfUnity_spec {ζ : Rˣ} (hζ : ζ ∈ rootsOfUnity (Fintype.card Mˣ) R)
     {g : Mˣ} (hg : ∀ x, x ∈ Subgroup.zpowers g) :
@@ -132,7 +136,7 @@ lemma exists_mulChar_orderOf {n : ℕ} (h : n ∣ Fintype.card F - 1) {ζ : R}
     simp only [hn, zero_dvd_iff, Nat.sub_eq_zero_iff_le] at h
     exact (Fintype.one_lt_card.trans_le h).false
   let e := MulChar.equiv_rootsOfUnity F R
-  let ζ' : Rˣ := (hζ.isUnit hn₀).unit
+  let ζ' : Rˣ := (hζ.isUnit hn₀.ne').unit
   have h' : ζ' ^ (Fintype.card Fˣ : ℕ) = 1 :=
     Units.ext_iff.mpr <| (hζ.pow_eq_one_iff_dvd _).mpr <| Fintype.card_units (α := F) ▸ h
   use e.symm ⟨ζ', (mem_rootsOfUnity (Fintype.card Fˣ) ζ').mpr h'⟩

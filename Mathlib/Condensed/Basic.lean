@@ -3,9 +3,10 @@ Copyright (c) 2023 Adam Topaz. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam Topaz
 -/
+module
 
-import Mathlib.CategoryTheory.Sites.Sheaf
-import Mathlib.Topology.Category.CompHaus.EffectiveEpi
+public import Mathlib.CategoryTheory.Sites.Sheaf
+public import Mathlib.Topology.Category.CompHaus.EffectiveEpi
 
 /-!
 
@@ -28,6 +29,8 @@ as we do not impose cardinality bounds, and manage universes carefully instead.
 - [scholze2019condensed]: *Lectures on Condensed Mathematics*, 2019.
 
 -/
+
+@[expose] public section
 
 open CategoryTheory Limits
 
@@ -73,6 +76,7 @@ end Condensed
 
 namespace CondensedSet
 
+attribute [local instance] Types.instFunLike Types.instConcreteCategory in
 -- Note: `simp` can prove this when stated for `Condensed C` for a concrete category `C`.
 -- However, it doesn't seem to see through the abbreviation `CondensedSet`
 @[simp]

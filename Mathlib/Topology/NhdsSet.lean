@@ -3,7 +3,9 @@ Copyright (c) 2022 Floris van Doorn. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Floris van Doorn, Patrick Massot
 -/
-import Mathlib.Topology.Basic
+module
+
+public import Mathlib.Topology.Neighborhoods
 
 /-!
 # Neighborhoods of a set
@@ -20,10 +22,12 @@ There are a couple different notions equivalent to `s ∈ 𝓝ˢ t`:
 
 Furthermore, we have the following results:
 * `monotone_nhdsSet`: `𝓝ˢ` is monotone
-* In T₁-spaces, `𝓝ˢ`is strictly monotone and hence injective:
-  `strict_mono_nhdsSet`/`injective_nhdsSet`. These results are in `Mathlib.Topology.Separation`.
-
+* In T₁-spaces, `𝓝ˢ` is strictly monotone and hence injective:
+  `strict_mono_nhdsSet`/`injective_nhdsSet`. These results are in
+  `Mathlib/Topology/Separation/Basic.lean`.
 -/
+
+@[expose] public section
 
 open Set Filter Topology
 
@@ -42,7 +46,7 @@ lemma nhdsSet_le : 𝓝ˢ s ≤ f ↔ ∀ x ∈ s, 𝓝 x ≤ f := by simp [nhds
 
 theorem bUnion_mem_nhdsSet {t : X → Set X} (h : ∀ x ∈ s, t x ∈ 𝓝 x) : (⋃ x ∈ s, t x) ∈ 𝓝ˢ s :=
   mem_nhdsSet_iff_forall.2 fun x hx => mem_of_superset (h x hx) <|
-    subset_iUnion₂ (s := fun x _ => t x) x hx -- Porting note: fails to find `s`
+    subset_iUnion₂ (s := fun x _ => t x) x hx
 
 theorem subset_interior_iff_mem_nhdsSet : s ⊆ interior t ↔ t ∈ 𝓝ˢ s := by
   simp_rw [mem_nhdsSet_iff_forall, subset_interior_iff_nhds]
@@ -99,7 +103,7 @@ nonrec theorem Filter.EventuallyEq.self_of_nhdsSet {Y} {f g : X → Y} (h : f =�
 
 @[simp]
 theorem nhdsSet_eq_principal_iff : 𝓝ˢ s = 𝓟 s ↔ IsOpen s := by
-  rw [← principal_le_nhdsSet.le_iff_eq, le_principal_iff, mem_nhdsSet_iff_forall,
+  rw [← principal_le_nhdsSet.ge_iff_eq', le_principal_iff, mem_nhdsSet_iff_forall,
     isOpen_iff_mem_nhds]
 
 alias ⟨_, IsOpen.nhdsSet_eq⟩ := nhdsSet_eq_principal_iff
@@ -122,9 +126,9 @@ theorem mem_nhdsSet_empty : s ∈ 𝓝ˢ (∅ : Set X) := by simp
 @[simp]
 theorem nhdsSet_univ : 𝓝ˢ (univ : Set X) = ⊤ := by rw [isOpen_univ.nhdsSet_eq, principal_univ]
 
-@[mono]
+@[gcongr, mono]
 theorem nhdsSet_mono (h : s ⊆ t) : 𝓝ˢ s ≤ 𝓝ˢ t :=
-  sSup_le_sSup <| image_subset _ h
+  sSup_le_sSup <| image_mono h
 
 theorem monotone_nhdsSet : Monotone (𝓝ˢ : Set X → Filter X) := fun _ _ => nhdsSet_mono
 
@@ -143,19 +147,6 @@ theorem union_mem_nhdsSet (h₁ : s₁ ∈ 𝓝ˢ t₁) (h₂ : s₂ ∈ 𝓝ˢ 
 theorem nhdsSet_insert (x : X) (s : Set X) : 𝓝ˢ (insert x s) = 𝓝 x ⊔ 𝓝ˢ s := by
   rw [insert_eq, nhdsSet_union, nhdsSet_singleton]
 
-/-- Preimage of a set neighborhood of `t` under a continuous map `f` is a set neighborhood of `s`
-provided that `f` maps `s` to `t`. -/
-theorem Continuous.tendsto_nhdsSet {f : X → Y} {t : Set Y} (hf : Continuous f)
-    (hst : MapsTo f s t) : Tendsto f (𝓝ˢ s) (𝓝ˢ t) :=
-  ((hasBasis_nhdsSet s).tendsto_iff (hasBasis_nhdsSet t)).mpr fun U hU =>
-    ⟨f ⁻¹' U, ⟨hU.1.preimage hf, hst.mono Subset.rfl hU.2⟩, fun _ => id⟩
-
-lemma Continuous.tendsto_nhdsSet_nhds
-    {y : Y} {f : X → Y} (h : Continuous f) (h' : EqOn f (fun _ ↦ y) s) :
-    Tendsto f (𝓝ˢ s) (𝓝 y) := by
-  rw [← nhdsSet_singleton]
-  exact h.tendsto_nhdsSet h'
-
 /- This inequality cannot be improved to an equality. For instance,
 if `X` has two elements and the coarse topology and `s` and `t` are distinct singletons then
 `𝓝ˢ (s ∩ t) = ⊥` while `𝓝ˢ s ⊓ 𝓝ˢ t = ⊤` and those are different. -/
@@ -173,7 +164,7 @@ theorem IsClosed.nhdsSet_le_sup (h : IsClosed t) : 𝓝ˢ s ≤ 𝓝ˢ (s ∩ t)
   calc
     𝓝ˢ s = 𝓝ˢ (s ∩ t ∪ s ∩ tᶜ) := by rw [Set.inter_union_compl s t]
     _ = 𝓝ˢ (s ∩ t) ⊔ 𝓝ˢ (s ∩ tᶜ) := by rw [nhdsSet_union]
-    _ ≤ 𝓝ˢ (s ∩ t) ⊔ 𝓝ˢ (tᶜ) := sup_le_sup_left (monotone_nhdsSet inter_subset_right) _
+    _ ≤ 𝓝ˢ (s ∩ t) ⊔ 𝓝ˢ (tᶜ) := by nth_grw 2 [inter_subset_right]
     _ = 𝓝ˢ (s ∩ t) ⊔ 𝓟 (tᶜ) := by rw [h.isOpen_compl.nhdsSet_eq]
 
 variable (s) in

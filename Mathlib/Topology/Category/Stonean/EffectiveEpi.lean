@@ -3,16 +3,18 @@ Copyright (c) 2023 Jon Eugster. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Dagur Asgeirsson, Boris Bolvig Kjær, Jon Eugster, Sina Hazratpour, Nima Rasekh
 -/
-import Mathlib.CategoryTheory.Sites.Coherent.ReflectsPreregular
-import Mathlib.Topology.Category.CompHaus.EffectiveEpi
-import Mathlib.Topology.Category.Stonean.Limits
+module
+
+public import Mathlib.CategoryTheory.Sites.Coherent.ReflectsPreregular
+public import Mathlib.Topology.Category.CompHaus.EffectiveEpi
+public import Mathlib.Topology.Category.Stonean.Limits
 /-!
 
 # Effective epimorphisms in `Stonean`
 
 This file proves that `EffectiveEpi`, `Epi` and `Surjective` are all equivalent in `Stonean`.
 As a consequence we deduce from the material in
-`Mathlib.Topology.Category.CompHausLike.EffectiveEpi` that `Stonean` is `Preregular`
+`Mathlib/Topology/Category/CompHausLike/EffectiveEpi.lean` that `Stonean` is `Preregular`
 and `Precoherent`.
 
 We also prove that for a finite family of morphisms in `Stonean` with fixed
@@ -20,11 +22,11 @@ target, the conditions jointly surjective, jointly epimorphic and effective epim
 equivalent.
 -/
 
+@[expose] public section
+
 universe u
 
 open CategoryTheory Limits CompHausLike
-
-attribute [local instance] ConcreteCategory.instFunLike
 
 namespace Stonean
 

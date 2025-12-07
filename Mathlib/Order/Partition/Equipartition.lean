@@ -3,10 +3,13 @@ Copyright (c) 2022 Yaël Dillies, Bhavik Mehta. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Yaël Dillies, Bhavik Mehta
 -/
-import Mathlib.Algebra.Order.Ring.Nat
-import Mathlib.Data.Set.Equitable
-import Mathlib.Logic.Equiv.Fin
-import Mathlib.Order.Partition.Finpartition
+module
+
+public import Mathlib.Algebra.Order.Ring.Nat
+public import Mathlib.Data.Set.Equitable
+public import Mathlib.Logic.Equiv.Fin.Basic
+public import Mathlib.Order.Partition.Finpartition
+public import Mathlib.Tactic.ApplyFun
 
 /-!
 # Finite equipartitions
@@ -21,6 +24,8 @@ difference of `1`.
   equipped with an equipartition. Indices of elements in the same part are congruent modulo
   the number of parts.
 -/
+
+@[expose] public section
 
 
 open Finset Fintype
@@ -54,9 +59,7 @@ theorem IsEquipartition.card_parts_eq_average (hP : P.IsEquipartition) (ht : t �
 theorem IsEquipartition.card_part_eq_average_iff (hP : P.IsEquipartition) (ht : t ∈ P.parts) :
     #t = #s / #P.parts ↔ #t ≠ #s / #P.parts + 1 := by
   have a := hP.card_parts_eq_average ht
-  have b : ¬(#t = #s / #P.parts ∧ #t = #s / #P.parts + 1) := by
-    by_contra h; exact absurd (h.1 ▸ h.2) (lt_add_one _).ne
-  tauto
+  lia
 
 theorem IsEquipartition.average_le_card_part (hP : P.IsEquipartition) (ht : t ∈ P.parts) :
     #s / #P.parts ≤ #t := by
@@ -129,12 +132,12 @@ theorem IsEquipartition.exists_partPreservingEquiv (hP : P.IsEquipartition) : �
   have less : ∀ a, z a < #s := fun a ↦ by
     rcases hP.card_parts_eq_average (f a).1.2 with (c | c)
     · calc
-        _ < #P.parts * ((f a).2 + 1) := add_lt_add_left (gl a) _
-        _ ≤ #P.parts * (#s / #P.parts) := mul_le_mul_left' (c ▸ (f a).2.2) _
+        _ < #P.parts * ((f a).2 + 1) := by simp only [z, mul_add_one]; gcongr; exact gl a
+        _ ≤ #P.parts * (#s / #P.parts) := by gcongr; exact c ▸ (f a).2.2
         _ ≤ #P.parts * (#s / #P.parts) + #s % #P.parts := Nat.le_add_right ..
         _ = _ := Nat.div_add_mod ..
     · rw [← Nat.div_add_mod #s #P.parts]
-      exact add_lt_add_of_le_of_lt (mul_le_mul_left' (by omega) _) ((hg (f a).1).mp c)
+      exact add_lt_add_of_le_of_lt (mul_le_mul_right (by lia) _) ((hg (f a).1).mp c)
   let z' : s → Fin #s := fun a ↦ ⟨z a, less a⟩
   have bij : z'.Bijective := by
     refine (bijective_iff_injective_and_card z').mpr ⟨fun a b e ↦ ?_, by simp⟩
@@ -146,7 +149,7 @@ theorem IsEquipartition.exists_partPreservingEquiv (hP : P.IsEquipartition) : �
     exact Sigma.ext e.2 <| (Fin.heq_ext_iff (by rw [e.2])).mpr e.1
   use Equiv.ofBijective _ bij
   intro a b
-  simp_rw [Equiv.ofBijective_apply, z, hf a b, Nat.mul_add_mod,
+  simp_rw [z', z, Equiv.ofBijective_apply, hf a b, Nat.mul_add_mod,
     Nat.mod_eq_of_lt (gl a), Nat.mod_eq_of_lt (gl b), Fin.val_eq_val, g.apply_eq_iff_eq]
 
 /-! ### Discrete and indiscrete finpartitions -/

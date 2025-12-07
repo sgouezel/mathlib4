@@ -3,12 +3,16 @@ Copyright (c) 2024 Gareth Ma. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Gareth Ma
 -/
-import Mathlib.CategoryTheory.Monoidal.Rigid.Basic
-import Mathlib.CategoryTheory.Monoidal.Braided.Basic
+module
+
+public import Mathlib.CategoryTheory.Monoidal.Rigid.Basic
+public import Mathlib.CategoryTheory.Monoidal.Braided.Basic
 
 /-!
 # Deriving `RigidCategory` instance for braided and left/right rigid categories.
 -/
+
+@[expose] public section
 
 open CategoryTheory Category BraidedCategory MonoidalCategory
 
@@ -37,7 +41,7 @@ private theorem coevaluation_evaluation_braided' [inst : ExactPairing X Y] :
       iterate 5 rw [← IsIso.comp_inv_eq]
       simpa using yang_baxter X Y X
     _ = 𝟙 X ⊗≫ (X ◁ η_ X Y ≫ (β_ X (X ⊗ Y)).hom) ⊗≫ ((β_ (Y ⊗ X) X).inv ≫ ε_ X Y ▷ X) ⊗≫ 𝟙 X := by
-      simp [monoidalComp, braiding_tensor_right, braiding_inv_tensor_left]
+      simp [monoidalComp, braiding_tensor_right_hom, braiding_tensor_left_inv]
     _ = _ := by
       rw [braiding_naturality_right, ← braiding_inv_naturality_right]
       simp [monoidalComp]
@@ -53,13 +57,16 @@ private theorem evaluation_coevaluation_braided' [inst : ExactPairing X Y] :
     _ = 𝟙 Y ⊗≫ η_ X Y ▷ Y ⊗≫ (𝟙 ((X ⊗ Y) ⊗ Y) ⊗≫ X ◁ (β_ Y Y).hom ⊗≫ (β_ X Y).hom ▷ Y
         ⊗≫ Y ◁ (β_ Y X).inv ⊗≫ (β_ Y Y).inv ▷ X ⊗≫ 𝟙 (Y ⊗ Y ⊗ X)) ⊗≫ Y ◁ ε_ X Y ⊗≫ 𝟙 Y := by
       congr 3
-      all_goals simp [monoidalComp]
+      on_goal 2 => simp [monoidalComp]
+      simp only [monoidalComp, MonoidalCoherence.assoc_iso, MonoidalCoherence.whiskerRight_iso,
+        MonoidalCoherence.refl_iso, whiskerRightIso_refl, Iso.trans_refl,
+        MonoidalCoherence.assoc'_iso, Iso.refl_trans, Iso.symm_hom, comp_id, id_comp]
       iterate 2 rw [← IsIso.eq_inv_comp]
       repeat rw [← assoc]
       iterate 4 rw [← IsIso.comp_inv_eq]
       simpa using (yang_baxter Y X Y).symm
     _ = 𝟙 Y ⊗≫ (η_ X Y ▷ Y ≫ (β_ (X ⊗ Y) Y).hom) ⊗≫ ((β_ Y (Y ⊗ X)).inv ≫ Y ◁ ε_ X Y) ⊗≫ 𝟙 Y := by
-      simp [monoidalComp, braiding_tensor_left, braiding_inv_tensor_right]
+      simp [monoidalComp, braiding_tensor_left_hom, braiding_tensor_right_inv]
     _ = _ := by
       rw [braiding_naturality_left, ← braiding_inv_naturality_left]
       simp [monoidalComp]
@@ -88,12 +95,12 @@ instance leftRigidCategoryOfRightRigidCategory [RightRigidCategory C] : LeftRigi
 instance rightRigidCategoryOfLeftRigidCategory [LeftRigidCategory C] : RightRigidCategory C where
   rightDual X := hasRightDualOfHasLeftDual (X := X)
 
-/-- If `C` is a braided and right rigid category, then it is a rigid category. --/
+/-- If `C` is a braided and right rigid category, then it is a rigid category. -/
 instance rigidCategoryOfRightRigidCategory [RightRigidCategory C] : RigidCategory C where
   rightDual := inferInstance
   leftDual := inferInstance
 
-/-- If `C` is a braided and left rigid category, then it is a rigid category. --/
+/-- If `C` is a braided and left rigid category, then it is a rigid category. -/
 instance rigidCategoryOfLeftRigidCategory [LeftRigidCategory C] : RigidCategory C where
   rightDual := inferInstance
   leftDual := inferInstance

@@ -3,10 +3,12 @@ Copyright (c) 2021 Patrick Massot. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Patrick Massot
 -/
-import Mathlib.Analysis.Calculus.MeanValue
-import Mathlib.MeasureTheory.Integral.DominatedConvergence
-import Mathlib.MeasureTheory.Integral.SetIntegral
-import Mathlib.Analysis.NormedSpace.HahnBanach.SeparatingDual
+module
+
+public import Mathlib.Analysis.Calculus.MeanValue
+public import Mathlib.MeasureTheory.Integral.DominatedConvergence
+public import Mathlib.MeasureTheory.Integral.Bochner.Set
+public import Mathlib.Analysis.LocallyConvex.SeparatingDual
 
 /-!
 # Derivatives of integrals depending on parameters
@@ -14,7 +16,8 @@ import Mathlib.Analysis.NormedSpace.HahnBanach.SeparatingDual
 A parametric integral is a function with shape `f = fun x : H ↦ ∫ a : α, F x a ∂μ` for some
 `F : H → α → E`, where `H` and `E` are normed spaces and `α` is a measured space with measure `μ`.
 
-We already know from `continuous_of_dominated` in `Mathlib/MeasureTheory/Integral/Bochner.lean` how
+We already know from `continuous_of_dominated`
+in `Mathlib/MeasureTheory/Integral/Bochner/Basic.lean` how
 to guarantee that `f` is continuous using the dominated convergence theorem. In this file,
 we want to express the derivative of `f` as the integral of the derivative of `F` with respect
 to `x`.
@@ -38,8 +41,8 @@ variable.
   controlled by a positive number `ε`.
 
 * `hasFDerivAt_integral_of_dominated_of_fderiv_le`: this version assumes `fun x ↦ F x a` has
-   derivative `F' x a` for `x` near `x₀` and `F' x` is bounded by an integrable function independent
-   from `x` near `x₀`.
+  derivative `F' x a` for `x` near `x₀` and `F' x` is bounded by an integrable function independent
+  from `x` near `x₀`.
 
 `hasDerivAt_integral_of_dominated_loc_of_lip` and
 `hasDerivAt_integral_of_dominated_loc_of_deriv_le` are versions of the above two results that
@@ -51,6 +54,8 @@ We also provide versions of these theorems for set integrals.
 ## Tags
 integral, derivative
 -/
+
+@[expose] public section
 
 
 noncomputable section
@@ -171,6 +176,7 @@ theorem hasFDerivAt_integral_of_dominated_loc_of_lip {F' : α → H →L[𝕜] E
   replace bound_integrable := bound_integrable.norm
   apply hasFDerivAt_integral_of_dominated_loc_of_lip' δ_pos <;> assumption
 
+open scoped Interval in
 /-- Differentiation under integral of `x ↦ ∫ x in a..b, F x t` at a given point `x₀ ∈ (a,b)`,
 assuming `F x₀` is integrable on `(a,b)`, that `x ↦ F x t` is Lipschitz on a ball around `x₀`
 for almost every `t` (with a ball radius independent of `t`) with integrable Lipschitz bound,
@@ -221,6 +227,7 @@ theorem hasFDerivAt_integral_of_dominated_of_fderiv_le {F' : H → α → H →L
   exact (hasFDerivAt_integral_of_dominated_loc_of_lip ε_pos hF_meas hF_int hF'_meas this
     bound_integrable diff_x₀).2
 
+open scoped Interval in
 /-- Differentiation under integral of `x ↦ ∫ x in a..b, F x a` at a given point `x₀`, assuming
 `F x₀` is integrable on `(a,b)`, `x ↦ F x a` is differentiable on a ball around `x₀` for ae `a` with
 derivative norm uniformly bounded by an integrable function (the ball radius is independent of `a`),
@@ -261,16 +268,11 @@ theorem hasDerivAt_integral_of_dominated_loc_of_lip {F' : α → E} (ε_pos : 0 
   replace h_diff : ∀ᵐ a ∂μ, HasFDerivAt (F · a) (L (F' a)) x₀ :=
     h_diff.mono fun x hx ↦ hx.hasFDerivAt
   have hm : AEStronglyMeasurable (L ∘ F') μ := L.continuous.comp_aestronglyMeasurable hF'_meas
-  cases'
-    hasFDerivAt_integral_of_dominated_loc_of_lip ε_pos hF_meas hF_int hm h_lipsch bound_integrable
-      h_diff with
-    hF'_int key
+  obtain ⟨hF'_int, key⟩ := hasFDerivAt_integral_of_dominated_loc_of_lip
+    ε_pos hF_meas hF_int hm h_lipsch bound_integrable h_diff
   replace hF'_int : Integrable F' μ := by
     rw [← integrable_norm_iff hm] at hF'_int
-    simpa only [L, (· ∘ ·), integrable_norm_iff, hF'_meas, one_mul, norm_one,
-      ContinuousLinearMap.comp_apply, ContinuousLinearMap.coe_restrict_scalarsL',
-      ContinuousLinearMap.norm_restrictScalars, ContinuousLinearMap.norm_smulRightL_apply] using
-      hF'_int
+    simpa [L, (· ∘ ·), integrable_norm_iff hF'_meas] using hF'_int
   refine ⟨hF'_int, ?_⟩
   by_cases hE : CompleteSpace E; swap
   · simpa [integral, hE] using hasDerivAt_const x₀ 0

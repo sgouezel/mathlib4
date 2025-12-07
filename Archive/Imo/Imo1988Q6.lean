@@ -23,10 +23,6 @@ and apply this to prove Q6 of IMO1988.
 To illustrate the technique, we also prove a similar result.
 -/
 
-
--- open_locale classical
-attribute [local instance] Classical.propDecidable
-
 attribute [local simp] sq
 
 namespace Imo1988Q6
@@ -42,7 +38,7 @@ under the following conditions:
 * `H_zero` : If an integral point `(x,0)` lies on the hyperbola `H`, then `claim` is true.
 * `H_diag` : If an integral point `(x,x)` lies on the hyperbola `H`, then `claim` is true.
 * `H_desc` : If `(x,y)` is an integral point on the hyperbola `H`,
-with `x < y` then there exists a “smaller” point on `H`: a point `(x',y')` with `x' < y' ≤ x`.
+  with `x < y` then there exists a “smaller” point on `H`: a point `(x',y')` with `x' < y' ≤ x`.
 
 For reasons of usability, the hyperbola `H` is implemented as an arbitrary predicate.
 (In question 6 of IMO1988, where this proof technique was first developed,
@@ -72,7 +68,7 @@ theorem constant_descent_vieta_jumping (x y : ℕ) {claim : Prop} {H : ℕ → �
   -- First of all, we may assume that x ≤ y.
   -- We justify this using H_symm.
   wlog hxy : x ≤ y
-  · rw [H_symm] at h₀; apply this y x h₀ B C base _ _ _ _ _ _ (le_of_not_le hxy); assumption'
+  · rw [H_symm] at h₀; apply this y x h₀ B C base _ _ _ _ _ _ (le_of_not_ge hxy); assumption'
   -- In fact, we can easily deal with the case x = y.
   by_cases x_eq_y : x = y
   · subst x_eq_y; exact H_diag h₀
@@ -111,7 +107,7 @@ theorem constant_descent_vieta_jumping (x y : ℕ) {claim : Prop} {H : ℕ → �
       -- We find the other root of the equation, and Vieta's formulas.
       rcases vieta_formula_quadratic hH with ⟨c, h_root, hV₁, hV₂⟩
       -- By substitutions we find that b = 0 or b = a.
-      simp only [hB, add_right_eq_self, add_right_inj] at hV₁
+      simp only [hB, add_eq_left, add_right_inj] at hV₁
       subst hV₁
       rw [← Int.ofNat_zero] at *
       rw [← H_quad] at h_root
@@ -158,7 +154,7 @@ theorem constant_descent_vieta_jumping (x y : ℕ) {claim : Prop} {H : ℕ → �
   rw [mul_comm] at hV₂
   have Hc := H_desc hmx mx_lt_my h_base hHm c h_root hV₁ hV₂
   -- This means that we may assume that c ≥ 0 and c ≤ m_x.
-  cases' Hc with c_nonneg c_lt
+  obtain ⟨c_nonneg, c_lt⟩ := Hc
   -- In other words, c is a natural number.
   lift c to ℕ using c_nonneg
   -- Recall that we are trying find a point (a,b) such that b ∈ S and b < m.
@@ -237,14 +233,14 @@ theorem imo1988_q6 {a b : ℕ} (h : a * b + 1 ∣ a ^ 2 + b ^ 2) :
         rw [← sub_eq_zero, ← h_root]
         ring
       rw [hzx] at hpos
-      replace hpos : z * x + 1 > 0 := pos_of_mul_pos_left hpos (Int.ofNat_zero_le k)
+      replace hpos : z * x + 1 > 0 := pos_of_mul_pos_left hpos (Int.natCast_nonneg k)
       replace hpos : z * x ≥ 0 := Int.le_of_lt_add_one hpos
       apply nonneg_of_mul_nonneg_left hpos (mod_cast hx)
     · contrapose! hV₀ with x_lt_z
       apply ne_of_gt
       calc
         z * y > x * x := by apply mul_lt_mul' <;> omega
-        _ ≥ x * x - k := sub_le_self _ (Int.ofNat_zero_le k)
+        _ ≥ x * x - k := sub_le_self _ (Int.natCast_nonneg k)
   · -- There is no base case in this application of Vieta jumping.
     simp
 

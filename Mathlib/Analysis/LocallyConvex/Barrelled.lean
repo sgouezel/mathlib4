@@ -3,19 +3,21 @@ Copyright (c) 2023 Anatole Dedecker. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Anatole Dedecker
 -/
-import Mathlib.Analysis.LocallyConvex.WithSeminorms
-import Mathlib.Topology.Semicontinuous
-import Mathlib.Topology.Baire.Lemmas
+module
+
+public import Mathlib.Analysis.LocallyConvex.WithSeminorms
+public import Mathlib.Topology.Semicontinuous
+public import Mathlib.Topology.Baire.Lemmas
 
 /-!
 # Barrelled spaces and the Banach-Steinhaus theorem / Uniform Boundedness Principle
 
-This files defines barrelled spaces over a `NontriviallyNormedField`, and proves the
+This file defines barrelled spaces over a `NontriviallyNormedField`, and proves the
 Banach-Steinhaus theorem for maps from a barrelled space to a space equipped with a family
-of seminorms generating the topology (i.e `WithSeminorms q` for some family of seminorms `q`).
+of seminorms generating the topology (i.e. `WithSeminorms q` for some family of seminorms `q`).
 
 The more standard Banach-Steinhaus theorem for normed spaces is then deduced from that in
-`Mathlib.Analysis.Normed.Operator.BanachSteinhaus`.
+`Mathlib/Analysis/Normed/Operator/BanachSteinhaus.lean`.
 
 ## Main definitions
 
@@ -71,6 +73,8 @@ with the seminorm characterization!
 banach-steinhaus, uniform boundedness, equicontinuity
 -/
 
+@[expose] public section
+
 open Filter Topology Set ContinuousLinearMap
 
 section defs
@@ -91,7 +95,7 @@ theorem Seminorm.continuous_of_lowerSemicontinuous {𝕜 E : Type*} [AddGroup E]
   BarrelledSpace.continuous_of_lowerSemicontinuous p hp
 
 theorem Seminorm.continuous_iSup
-    {ι : Sort*} {𝕜 E : Type*} [NormedField 𝕜]  [AddCommGroup E] [Module 𝕜 E]
+    {ι : Sort*} {𝕜 E : Type*} [NormedField 𝕜] [AddCommGroup E] [Module 𝕜 E]
     [TopologicalSpace E] [BarrelledSpace 𝕜 E] (p : ι → Seminorm 𝕜 E)
     (hp : ∀ i, Continuous (p i)) (bdd : BddAbove (range p)) :
     Continuous (⨆ i, p i) := by
@@ -106,13 +110,13 @@ end defs
 
 section TVS_anyField
 
-variable {α ι κ 𝕜₁ 𝕜₂ E F : Type*} [Nonempty κ] [NontriviallyNormedField 𝕜₁]
+variable {α ι κ 𝕜₁ 𝕜₂ E F : Type*} [NontriviallyNormedField 𝕜₁]
     [NontriviallyNormedField 𝕜₂] {σ₁₂ : 𝕜₁ →+* 𝕜₂} [RingHomIsometric σ₁₂]
     [AddCommGroup E] [AddCommGroup F] [Module 𝕜₁ E] [Module 𝕜₂ F]
 
 /-- Any TVS over a `NontriviallyNormedField` that is also a Baire space is barrelled. In
 particular, this applies to Banach spaces and Fréchet spaces. -/
-instance BaireSpace.instBarrelledSpace [TopologicalSpace E] [TopologicalAddGroup E]
+instance BaireSpace.instBarrelledSpace [TopologicalSpace E] [IsTopologicalAddGroup E]
     [ContinuousConstSMul 𝕜₁ E] [BaireSpace E] :
     BarrelledSpace 𝕜₁ E where
   continuous_of_lowerSemicontinuous := by
@@ -145,7 +149,7 @@ instance BaireSpace.instBarrelledSpace [TopologicalSpace E] [TopologicalAddGroup
 
 namespace WithSeminorms
 
-variable [UniformSpace E] [UniformSpace F] [UniformAddGroup E] [UniformAddGroup F]
+variable [UniformSpace E] [UniformSpace F] [IsUniformAddGroup E] [IsUniformAddGroup F]
     [ContinuousSMul 𝕜₁ E] [BarrelledSpace 𝕜₁ E] {𝓕 : ι → E →SL[σ₁₂] F}
     {q : SeminormFamily 𝕜₂ F κ} (hq : WithSeminorms q)
 include hq
@@ -194,7 +198,7 @@ protected def continuousLinearMapOfTendsto (hq : WithSeminorms q)
     refine (h.comp hu).continuous_of_equicontinuous (hq.banach_steinhaus ?_).equicontinuous
     -- For `k` and `x` fixed, we need to show that `(i : ℕ) ↦ q k (g i x)` is bounded.
     intro k x
-    -- This follows from the fact that this sequences converges (to `q k (f x)`) by hypothesis and
+    -- This follows from the fact that this sequence converges (to `q k (f x)`) by hypothesis and
     -- continuity of `q k`.
     rw [tendsto_pi_nhds] at h
     exact (((hq.continuous_seminorm k).tendsto _).comp <| (h x).comp hu).bddAbove_range

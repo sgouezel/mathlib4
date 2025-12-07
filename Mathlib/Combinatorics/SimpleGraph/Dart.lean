@@ -3,7 +3,10 @@ Copyright (c) 2020 Kyle Miller. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Kyle Miller
 -/
-import Mathlib.Combinatorics.SimpleGraph.Basic
+module
+
+public import Mathlib.Combinatorics.SimpleGraph.Basic
+public import Mathlib.Data.Fintype.Sigma
 
 /-!
 # Darts in graphs
@@ -11,6 +14,8 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 A `Dart` or half-edge or bond in a graph is an ordered pair of adjacent vertices, regarded as an
 oriented edge. This file defines darts and proves some of their basic properties.
 -/
+
+@[expose] public section
 
 namespace SimpleGraph
 
@@ -36,9 +41,6 @@ theorem Dart.ext_iff (d₁ d₂ : G.Dart) : d₁ = d₂ ↔ d₁.toProd = d₂.t
 theorem Dart.ext (d₁ d₂ : G.Dart) (h : d₁.toProd = d₂.toProd) : d₁ = d₂ :=
   (Dart.ext_iff d₁ d₂).mpr h
 
--- Porting note: deleted `Dart.fst` and `Dart.snd` since they are now invalid declaration names,
--- even though there is not actually a `SimpleGraph.Dart.fst` or `SimpleGraph.Dart.snd`.
-
 @[simp]
 theorem Dart.fst_ne_snd (d : G.Dart) : d.fst ≠ d.snd :=
   fun h ↦ G.irrefl (h ▸ d.adj)
@@ -53,9 +55,7 @@ theorem Dart.toProd_injective : Function.Injective (Dart.toProd : G.Dart → V �
 instance Dart.fintype [Fintype V] [DecidableRel G.Adj] : Fintype G.Dart :=
   Fintype.ofEquiv (Σ v, G.neighborSet v)
     { toFun := fun s => ⟨(s.fst, s.snd), s.snd.property⟩
-      invFun := fun d => ⟨d.fst, d.snd, d.adj⟩
-      left_inv := fun s => by ext <;> simp
-      right_inv := fun d => by ext <;> simp }
+      invFun := fun d => ⟨d.fst, d.snd, d.adj⟩ }
 
 /-- The edge associated to the dart. -/
 def Dart.edge (d : G.Dart) : Sym2 V :=

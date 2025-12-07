@@ -3,9 +3,12 @@ Copyright (c) 2020 Bhavik Mehta. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta, Robin Carlier
 -/
-import Mathlib.CategoryTheory.Limits.Final
-import Mathlib.CategoryTheory.Limits.Shapes.Equalizers
-import Mathlib.CategoryTheory.Limits.Shapes.KernelPair
+module
+
+public import Mathlib.CategoryTheory.Limits.ConeCategory
+public import Mathlib.CategoryTheory.Limits.Final
+public import Mathlib.CategoryTheory.Limits.Shapes.Equalizers
+public import Mathlib.CategoryTheory.Limits.Shapes.KernelPair
 
 /-!
 # Reflexive coequalizers
@@ -39,15 +42,17 @@ reflexive.
 * `hasReflexiveCoequalizers_iff`: A category has coequalizers of reflexive pairs if and only iff it
   has all colimits of shape `WalkingReflexivePair`.
 
-# TODO
+## TODO
 * If `C` has binary coproducts and reflexive coequalizers, then it has all coequalizers.
 * If `T` is a monad on cocomplete category `C`, then `Algebra T` is cocomplete iff it has reflexive
   coequalizers.
-* If `C` is locally cartesian closed and has reflexive coequalizers, then it has images: in fact
+* If `C` is locally Cartesian closed and has reflexive coequalizers, then it has images: in fact
   regular epi (and hence strong epi) images.
 * Bundle the reflexive pairs of kernel pairs and of adjunction as functors out of the walking
   reflexive pair.
 -/
+
+@[expose] public section
 
 
 namespace CategoryTheory
@@ -189,6 +194,8 @@ open WalkingReflexivePair
 
 namespace WalkingReflexivePair
 
+-- Don't generate unnecessary `sizeOf_spec` lemma which the `simpNF` linter will complain about.
+set_option genSizeOfSpec false in
 /-- The type of morphisms for the diagram indexing reflexive (co)equalizers -/
 inductive Hom : (WalkingReflexivePair → WalkingReflexivePair → Type)
   | left : Hom one zero
@@ -198,10 +205,6 @@ inductive Hom : (WalkingReflexivePair → WalkingReflexivePair → Type)
   | rightCompReflexion : Hom one one
   | id (X : WalkingReflexivePair) : Hom X X
   deriving DecidableEq
-
-attribute [-simp, nolint simpNF] Hom.id.sizeOf_spec
-attribute [-simp, nolint simpNF] Hom.leftCompReflexion.sizeOf_spec
-attribute [-simp, nolint simpNF] Hom.rightCompReflexion.sizeOf_spec
 
 /-- Composition of morphisms in the diagram indexing reflexive (co)equalizers -/
 def Hom.comp :
@@ -236,7 +239,7 @@ open Hom
 
 @[simp]
 lemma Hom.id_eq (X : WalkingReflexivePair) :
-    Hom.id X = 𝟙 X := by rfl
+    Hom.id X = 𝟙 X := rfl
 
 @[reassoc (attr := simp)]
 lemma reflexion_comp_left : reflexion ≫ left = 𝟙 zero := rfl
@@ -329,7 +332,7 @@ variable {A B : C}
 /-- Bundle the data of a parallel pair along with a common section as a functor out of the walking
 reflexive pair -/
 def reflexivePair (f g : A ⟶ B) (s : B ⟶ A)
-    (sl : s ≫ f = 𝟙 B := by aesop_cat) (sr : s ≫ g = 𝟙 B := by aesop_cat) :
+    (sl : s ≫ f = 𝟙 B := by cat_disch) (sr : s ≫ g = 𝟙 B := by cat_disch) :
     (WalkingReflexivePair ⥤ C) where
   obj x :=
     match x with
@@ -401,9 +404,9 @@ section NatTrans
 
 variable {F G : WalkingReflexivePair ⥤ C}
   (e₀ : F.obj zero ⟶ G.obj zero) (e₁ : F.obj one ⟶ G.obj one)
-  (h₁ : F.map left ≫ e₀ = e₁ ≫ G.map left := by aesop_cat)
-  (h₂ : F.map right ≫ e₀ = e₁ ≫ G.map right := by aesop_cat)
-  (h₃ : F.map reflexion ≫ e₁ = e₀ ≫ G.map reflexion := by aesop_cat)
+  (h₁ : F.map left ≫ e₀ = e₁ ≫ G.map left := by cat_disch)
+  (h₂ : F.map right ≫ e₀ = e₁ ≫ G.map right := by cat_disch)
+  (h₃ : F.map reflexion ≫ e₁ = e₀ ≫ G.map reflexion := by cat_disch)
 
 /-- A constructor for natural transformations between functors from `WalkingReflexivePair`. -/
 def mkNatTrans : F ⟶ G where
@@ -414,10 +417,8 @@ def mkNatTrans : F ⟶ G where
     cases f
     all_goals
       dsimp
-      simp only [Functor.map_id, Category.id_comp, Category.comp_id,
-        Functor.map_comp, h₁, h₂, h₃, reassoc_of% h₁, reassoc_of% h₂,
-        reflexivePair_map_reflexion, reflexivePair_map_left, reflexivePair_map_right,
-        Category.assoc]
+      simp only [Functor.map_id, Category.id_comp, Category.comp_id, Functor.map_comp, h₁, h₂, h₃,
+        reassoc_of% h₁, reassoc_of% h₂, Category.assoc]
 
 @[simp]
 lemma mkNatTrans_app_zero : (mkNatTrans e₀ e₁ h₁ h₂ h₃).app zero = e₀ := rfl
@@ -432,9 +433,9 @@ variable {F G : WalkingReflexivePair ⥤ C}
 /-- Constructor for natural isomorphisms between functors out of `WalkingReflexivePair`. -/
 @[simps!]
 def mkNatIso (e₀ : F.obj zero ≅ G.obj zero) (e₁ : F.obj one ≅ G.obj one)
-    (h₁ : F.map left ≫ e₀.hom = e₁.hom ≫ G.map left := by aesop_cat)
-    (h₂ : F.map right ≫ e₀.hom = e₁.hom ≫ G.map right := by aesop_cat)
-    (h₃ : F.map reflexion ≫ e₁.hom = e₀.hom ≫ G.map reflexion := by aesop_cat) :
+    (h₁ : F.map left ≫ e₀.hom = e₁.hom ≫ G.map left := by cat_disch)
+    (h₂ : F.map right ≫ e₀.hom = e₁.hom ≫ G.map right := by cat_disch)
+    (h₃ : F.map reflexion ≫ e₁.hom = e₀.hom ≫ G.map reflexion := by cat_disch) :
     F ≅ G where
   hom := mkNatTrans e₀.hom e₁.hom
   inv := mkNatTrans e₀.inv e₁.inv
@@ -474,7 +475,7 @@ lemma whiskerRightMkNatTrans {F G : WalkingReflexivePair ⥤ C}
     {h₂ : F.map right ≫ e₀ = e₁ ≫ G.map right}
     {h₃ : F.map reflexion ≫ e₁ = e₀ ≫ G.map reflexion}
     {D : Type u₂} [Category.{v₂} D] (H : C ⥤ D) :
-    whiskerRight (mkNatTrans e₀ e₁ : F ⟶ G) H =
+    Functor.whiskerRight (mkNatTrans e₀ e₁ : F ⟶ G) H =
       mkNatTrans (H.map e₀) (H.map e₁)
           (by simp only [Functor.comp_obj, Functor.comp_map, ← Functor.map_comp, h₁])
           (by simp only [Functor.comp_obj, Functor.comp_map, ← Functor.map_comp, h₂])
@@ -543,7 +544,7 @@ lemma reflexiveCoforkEquivCofork_functor_obj_π (G : ReflexiveCofork F) :
     ((reflexiveCoforkEquivCofork F).functor.obj G).π = G.π := by
   dsimp [reflexiveCoforkEquivCofork]
   rw [ReflexiveCofork.π, Cofork.π]
-  aesop_cat
+  simp
 
 @[simp]
 lemma reflexiveCoforkEquivCofork_inverse_obj_π

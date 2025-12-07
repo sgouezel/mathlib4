@@ -3,10 +3,13 @@ Copyright (c) 2018 Chris Hughes. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Chris Hughes, Abhimanyu Pallavi Sudhir, Jean Lo, Calle Sönne, Benjamin Davidson
 -/
-import Mathlib.Order.Monotone.Odd
-import Mathlib.Analysis.Calculus.LogDeriv
-import Mathlib.Analysis.SpecialFunctions.ExpDeriv
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+module
+
+public import Mathlib.Order.Monotone.Odd
+public import Mathlib.Analysis.Calculus.LogDeriv
+public import Mathlib.Analysis.SpecialFunctions.ExpDeriv
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+public import Mathlib.Analysis.Calculus.Deriv.MeanValue
 
 /-!
 # Differentiability of trigonometric functions
@@ -21,9 +24,11 @@ computed.
 sin, cos, tan, angle
 -/
 
+@[expose] public section
+
 noncomputable section
 
-open scoped Topology Filter
+open scoped Asymptotics Topology Filter
 open Set
 
 namespace Complex
@@ -31,9 +36,9 @@ namespace Complex
 /-- The complex sine function is everywhere strictly differentiable, with the derivative `cos x`. -/
 theorem hasStrictDerivAt_sin (x : ℂ) : HasStrictDerivAt sin (cos x) x := by
   simp only [cos, div_eq_mul_inv]
-  convert ((((hasStrictDerivAt_id x).neg.mul_const I).cexp.sub
+  convert ((((hasStrictDerivAt_id x).fun_neg.mul_const I).cexp.sub
     ((hasStrictDerivAt_id x).mul_const I).cexp).mul_const I).mul_const (2 : ℂ)⁻¹ using 1
-  simp only [Function.comp, id]
+  simp only [id]
   rw [sub_mul, mul_assoc, mul_assoc, I_mul_I, neg_one_mul, neg_neg, mul_one, one_mul, mul_assoc,
     I_mul_I, mul_neg_one, sub_neg_eq_add, add_comm]
 
@@ -41,16 +46,36 @@ theorem hasStrictDerivAt_sin (x : ℂ) : HasStrictDerivAt sin (cos x) x := by
 theorem hasDerivAt_sin (x : ℂ) : HasDerivAt sin (cos x) x :=
   (hasStrictDerivAt_sin x).hasDerivAt
 
+theorem isEquivalent_sin : sin ~[𝓝 0] id := by simpa using (hasDerivAt_sin 0).isLittleO
+
+@[fun_prop]
 theorem contDiff_sin {n} : ContDiff ℂ n sin :=
   (((contDiff_neg.mul contDiff_const).cexp.sub (contDiff_id.mul contDiff_const).cexp).mul
     contDiff_const).div_const _
 
-@[fun_prop]
+@[simp]
 theorem differentiable_sin : Differentiable ℂ sin := fun x => (hasDerivAt_sin x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_sin {x : ℂ} : DifferentiableAt ℂ sin x :=
   differentiable_sin x
+
+/-- The function `Complex.sin` is complex analytic. -/
+@[fun_prop]
+lemma analyticAt_sin {x : ℂ} : AnalyticAt ℂ sin x :=
+  contDiff_sin.contDiffAt.analyticAt
+
+/-- The function `Complex.sin` is complex analytic. -/
+lemma analyticWithinAt_sin {x : ℂ} {s : Set ℂ} : AnalyticWithinAt ℂ sin s x :=
+  contDiff_sin.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Complex.sin` is complex analytic. -/
+theorem analyticOnNhd_sin {s : Set ℂ} : AnalyticOnNhd ℂ sin s :=
+  fun _ _ ↦ analyticAt_sin
+
+/-- The function `Complex.sin` is complex analytic. -/
+lemma analyticOn_sin {s : Set ℂ} : AnalyticOn ℂ sin s :=
+  contDiff_sin.contDiffOn.analyticOn
 
 @[simp]
 theorem deriv_sin : deriv sin = cos :=
@@ -61,23 +86,41 @@ theorem deriv_sin : deriv sin = cos :=
 theorem hasStrictDerivAt_cos (x : ℂ) : HasStrictDerivAt cos (-sin x) x := by
   simp only [sin, div_eq_mul_inv, neg_mul_eq_neg_mul]
   convert (((hasStrictDerivAt_id x).mul_const I).cexp.add
-    ((hasStrictDerivAt_id x).neg.mul_const I).cexp).mul_const (2 : ℂ)⁻¹ using 1
-  simp only [Function.comp, id]
+    ((hasStrictDerivAt_id x).fun_neg.mul_const I).cexp).mul_const (2 : ℂ)⁻¹ using 1
+  simp only [id]
   ring
 
 /-- The complex cosine function is everywhere differentiable, with the derivative `-sin x`. -/
 theorem hasDerivAt_cos (x : ℂ) : HasDerivAt cos (-sin x) x :=
   (hasStrictDerivAt_cos x).hasDerivAt
 
+@[fun_prop]
 theorem contDiff_cos {n} : ContDiff ℂ n cos :=
   ((contDiff_id.mul contDiff_const).cexp.add (contDiff_neg.mul contDiff_const).cexp).div_const _
 
-@[fun_prop]
+@[simp]
 theorem differentiable_cos : Differentiable ℂ cos := fun x => (hasDerivAt_cos x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_cos {x : ℂ} : DifferentiableAt ℂ cos x :=
   differentiable_cos x
+
+/-- The function `Complex.cos` is complex analytic. -/
+@[fun_prop]
+lemma analyticAt_cos {x : ℂ} : AnalyticAt ℂ cos x :=
+  contDiff_cos.contDiffAt.analyticAt
+
+/-- The function `Complex.cos` is complex analytic. -/
+lemma analyticWithinAt_cos {x : ℂ} {s : Set ℂ} : AnalyticWithinAt ℂ cos s x :=
+  contDiff_cos.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Complex.cos` is complex analytic. -/
+theorem analyticOnNhd_cos {s : Set ℂ} : AnalyticOnNhd ℂ cos s :=
+  fun _ _ ↦ analyticAt_cos
+
+/-- The function `Complex.cos` is complex analytic. -/
+lemma analyticOn_cos {s : Set ℂ} : AnalyticOn ℂ cos s :=
+  contDiff_cos.contDiffOn.analyticOn
 
 theorem deriv_cos {x : ℂ} : deriv cos x = -sin x :=
   (hasDerivAt_cos x).deriv
@@ -90,7 +133,7 @@ theorem deriv_cos' : deriv cos = fun x => -sin x :=
 `cosh x`. -/
 theorem hasStrictDerivAt_sinh (x : ℂ) : HasStrictDerivAt sinh (cosh x) x := by
   simp only [cosh, div_eq_mul_inv]
-  convert ((hasStrictDerivAt_exp x).sub (hasStrictDerivAt_id x).neg.cexp).mul_const (2 : ℂ)⁻¹
+  convert ((hasStrictDerivAt_exp x).sub (hasStrictDerivAt_id x).fun_neg.cexp).mul_const (2 : ℂ)⁻¹
     using 1
   rw [id, mul_neg_one, sub_eq_add_neg, neg_neg]
 
@@ -99,15 +142,35 @@ theorem hasStrictDerivAt_sinh (x : ℂ) : HasStrictDerivAt sinh (cosh x) x := by
 theorem hasDerivAt_sinh (x : ℂ) : HasDerivAt sinh (cosh x) x :=
   (hasStrictDerivAt_sinh x).hasDerivAt
 
+theorem isEquivalent_sinh : sinh ~[𝓝 0] id := by simpa using (hasDerivAt_sinh 0).isLittleO
+
+@[fun_prop]
 theorem contDiff_sinh {n} : ContDiff ℂ n sinh :=
   (contDiff_exp.sub contDiff_neg.cexp).div_const _
 
-@[fun_prop]
+@[simp]
 theorem differentiable_sinh : Differentiable ℂ sinh := fun x => (hasDerivAt_sinh x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_sinh {x : ℂ} : DifferentiableAt ℂ sinh x :=
   differentiable_sinh x
+
+/-- The function `Complex.sinh` is complex analytic. -/
+@[fun_prop]
+lemma analyticAt_sinh {x : ℂ} : AnalyticAt ℂ sinh x :=
+  contDiff_sinh.contDiffAt.analyticAt
+
+/-- The function `Complex.sinh` is complex analytic. -/
+lemma analyticWithinAt_sinh {x : ℂ} {s : Set ℂ} : AnalyticWithinAt ℂ sinh s x :=
+  contDiff_sinh.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Complex.sinh` is complex analytic. -/
+theorem analyticOnNhd_sinh {s : Set ℂ} : AnalyticOnNhd ℂ sinh s :=
+  fun _ _ ↦ analyticAt_sinh
+
+/-- The function `Complex.sinh` is complex analytic. -/
+lemma analyticOn_sinh {s : Set ℂ} : AnalyticOn ℂ sinh s :=
+  contDiff_sinh.contDiffOn.analyticOn
 
 @[simp]
 theorem deriv_sinh : deriv sinh = cosh :=
@@ -117,7 +180,7 @@ theorem deriv_sinh : deriv sinh = cosh :=
 derivative `sinh x`. -/
 theorem hasStrictDerivAt_cosh (x : ℂ) : HasStrictDerivAt cosh (sinh x) x := by
   simp only [sinh, div_eq_mul_inv]
-  convert ((hasStrictDerivAt_exp x).add (hasStrictDerivAt_id x).neg.cexp).mul_const (2 : ℂ)⁻¹
+  convert ((hasStrictDerivAt_exp x).add (hasStrictDerivAt_id x).fun_neg.cexp).mul_const (2 : ℂ)⁻¹
     using 1
   rw [id, mul_neg_one, sub_eq_add_neg]
 
@@ -126,15 +189,33 @@ theorem hasStrictDerivAt_cosh (x : ℂ) : HasStrictDerivAt cosh (sinh x) x := by
 theorem hasDerivAt_cosh (x : ℂ) : HasDerivAt cosh (sinh x) x :=
   (hasStrictDerivAt_cosh x).hasDerivAt
 
+@[fun_prop]
 theorem contDiff_cosh {n} : ContDiff ℂ n cosh :=
   (contDiff_exp.add contDiff_neg.cexp).div_const _
 
-@[fun_prop]
+@[simp]
 theorem differentiable_cosh : Differentiable ℂ cosh := fun x => (hasDerivAt_cosh x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_cosh {x : ℂ} : DifferentiableAt ℂ cosh x :=
   differentiable_cosh x
+
+/-- The function `Complex.cosh` is complex analytic. -/
+@[fun_prop]
+lemma analyticAt_cosh {x : ℂ} : AnalyticAt ℂ cosh x :=
+  contDiff_cosh.contDiffAt.analyticAt
+
+/-- The function `Complex.cosh` is complex analytic. -/
+lemma analyticWithinAt_cosh {x : ℂ} {s : Set ℂ} : AnalyticWithinAt ℂ cosh s x :=
+  contDiff_cosh.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Complex.cosh` is complex analytic. -/
+theorem analyticOnNhd_cosh {s : Set ℂ} : AnalyticOnNhd ℂ cosh s :=
+  fun _ _ ↦ analyticAt_cosh
+
+/-- The function `Complex.cosh` is complex analytic. -/
+lemma analyticOn_cosh {s : Set ℂ} : AnalyticOn ℂ cosh s :=
+  contDiff_cosh.contDiffOn.analyticOn
 
 @[simp]
 theorem deriv_cosh : deriv cosh = sinh :=
@@ -252,8 +333,8 @@ section
 /-! ### Simp lemmas for derivatives of `fun x => Complex.cos (f x)` etc., `f : E → ℂ` -/
 
 
-variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] {f : E → ℂ} {f' : E →L[ℂ] ℂ} {x : E}
-  {s : Set E}
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] {f : E → ℂ} {f' : StrongDual ℂ E}
+  {x : E} {s : Set E}
 
 /-! #### `Complex.cos` -/
 
@@ -274,7 +355,7 @@ theorem DifferentiableWithinAt.ccos (hf : DifferentiableWithinAt ℂ f s x) :
     DifferentiableWithinAt ℂ (fun x => Complex.cos (f x)) s x :=
   hf.hasFDerivWithinAt.ccos.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.ccos (hc : DifferentiableAt ℂ f x) :
     DifferentiableAt ℂ (fun x => Complex.cos (f x)) x :=
   hc.hasFDerivAt.ccos.differentiableAt
@@ -282,7 +363,7 @@ theorem DifferentiableAt.ccos (hc : DifferentiableAt ℂ f x) :
 theorem DifferentiableOn.ccos (hc : DifferentiableOn ℂ f s) :
     DifferentiableOn ℂ (fun x => Complex.cos (f x)) s := fun x h => (hc x h).ccos
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.ccos (hc : Differentiable ℂ f) :
     Differentiable ℂ fun x => Complex.cos (f x) := fun x => (hc x).ccos
 
@@ -329,7 +410,7 @@ theorem DifferentiableWithinAt.csin (hf : DifferentiableWithinAt ℂ f s x) :
     DifferentiableWithinAt ℂ (fun x => Complex.sin (f x)) s x :=
   hf.hasFDerivWithinAt.csin.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.csin (hc : DifferentiableAt ℂ f x) :
     DifferentiableAt ℂ (fun x => Complex.sin (f x)) x :=
   hc.hasFDerivAt.csin.differentiableAt
@@ -337,7 +418,7 @@ theorem DifferentiableAt.csin (hc : DifferentiableAt ℂ f x) :
 theorem DifferentiableOn.csin (hc : DifferentiableOn ℂ f s) :
     DifferentiableOn ℂ (fun x => Complex.sin (f x)) s := fun x h => (hc x h).csin
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.csin (hc : Differentiable ℂ f) :
     Differentiable ℂ fun x => Complex.sin (f x) := fun x => (hc x).csin
 
@@ -384,7 +465,7 @@ theorem DifferentiableWithinAt.ccosh (hf : DifferentiableWithinAt ℂ f s x) :
     DifferentiableWithinAt ℂ (fun x => Complex.cosh (f x)) s x :=
   hf.hasFDerivWithinAt.ccosh.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.ccosh (hc : DifferentiableAt ℂ f x) :
     DifferentiableAt ℂ (fun x => Complex.cosh (f x)) x :=
   hc.hasFDerivAt.ccosh.differentiableAt
@@ -392,7 +473,7 @@ theorem DifferentiableAt.ccosh (hc : DifferentiableAt ℂ f x) :
 theorem DifferentiableOn.ccosh (hc : DifferentiableOn ℂ f s) :
     DifferentiableOn ℂ (fun x => Complex.cosh (f x)) s := fun x h => (hc x h).ccosh
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.ccosh (hc : Differentiable ℂ f) :
     Differentiable ℂ fun x => Complex.cosh (f x) := fun x => (hc x).ccosh
 
@@ -439,7 +520,7 @@ theorem DifferentiableWithinAt.csinh (hf : DifferentiableWithinAt ℂ f s x) :
     DifferentiableWithinAt ℂ (fun x => Complex.sinh (f x)) s x :=
   hf.hasFDerivWithinAt.csinh.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.csinh (hc : DifferentiableAt ℂ f x) :
     DifferentiableAt ℂ (fun x => Complex.sinh (f x)) x :=
   hc.hasFDerivAt.csinh.differentiableAt
@@ -447,7 +528,7 @@ theorem DifferentiableAt.csinh (hc : DifferentiableAt ℂ f x) :
 theorem DifferentiableOn.csinh (hc : DifferentiableOn ℂ f s) :
     DifferentiableOn ℂ (fun x => Complex.sinh (f x)) s := fun x h => (hc x h).csinh
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.csinh (hc : Differentiable ℂ f) :
     Differentiable ℂ fun x => Complex.sinh (f x) := fun x => (hc x).csinh
 
@@ -487,15 +568,35 @@ theorem hasStrictDerivAt_sin (x : ℝ) : HasStrictDerivAt sin (cos x) x :=
 theorem hasDerivAt_sin (x : ℝ) : HasDerivAt sin (cos x) x :=
   (hasStrictDerivAt_sin x).hasDerivAt
 
+theorem isEquivalent_sin : sin ~[𝓝 0] id := by simpa using (hasDerivAt_sin 0).isLittleO
+
+@[fun_prop]
 theorem contDiff_sin {n} : ContDiff ℝ n sin :=
   Complex.contDiff_sin.real_of_complex
 
-@[fun_prop]
+@[simp]
 theorem differentiable_sin : Differentiable ℝ sin := fun x => (hasDerivAt_sin x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_sin : DifferentiableAt ℝ sin x :=
   differentiable_sin x
+
+/-- The function `Real.sin` is real analytic. -/
+@[fun_prop]
+lemma analyticAt_sin : AnalyticAt ℝ sin x :=
+  contDiff_sin.contDiffAt.analyticAt
+
+/-- The function `Real.sin` is real analytic. -/
+lemma analyticWithinAt_sin {s : Set ℝ} : AnalyticWithinAt ℝ sin s x :=
+  contDiff_sin.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Real.sin` is real analytic. -/
+theorem analyticOnNhd_sin {s : Set ℝ} : AnalyticOnNhd ℝ sin s :=
+  fun _ _ ↦ analyticAt_sin
+
+/-- The function `Real.sin` is real analytic. -/
+lemma analyticOn_sin {s : Set ℝ} : AnalyticOn ℝ sin s :=
+  contDiff_sin.contDiffOn.analyticOn
 
 @[simp]
 theorem deriv_sin : deriv sin = cos :=
@@ -507,15 +608,33 @@ theorem hasStrictDerivAt_cos (x : ℝ) : HasStrictDerivAt cos (-sin x) x :=
 theorem hasDerivAt_cos (x : ℝ) : HasDerivAt cos (-sin x) x :=
   (Complex.hasDerivAt_cos x).real_of_complex
 
+@[fun_prop]
 theorem contDiff_cos {n} : ContDiff ℝ n cos :=
   Complex.contDiff_cos.real_of_complex
 
-@[fun_prop]
+@[simp]
 theorem differentiable_cos : Differentiable ℝ cos := fun x => (hasDerivAt_cos x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_cos : DifferentiableAt ℝ cos x :=
   differentiable_cos x
+
+/-- The function `Real.cos` is real analytic. -/
+@[fun_prop]
+lemma analyticAt_cos : AnalyticAt ℝ cos x :=
+  contDiff_cos.contDiffAt.analyticAt
+
+/-- The function `Real.cos` is real analytic. -/
+lemma analyticWithinAt_cos {s : Set ℝ} : AnalyticWithinAt ℝ cos s x :=
+  contDiff_cos.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Real.cos` is real analytic. -/
+theorem analyticOnNhd_cos {s : Set ℝ} : AnalyticOnNhd ℝ cos s :=
+  fun _ _ ↦ analyticAt_cos
+
+/-- The function `Real.cos` is real analytic. -/
+lemma analyticOn_cos {s : Set ℝ} : AnalyticOn ℝ cos s :=
+  contDiff_cos.contDiffOn.analyticOn
 
 theorem deriv_cos : deriv cos x = -sin x :=
   (hasDerivAt_cos x).deriv
@@ -530,15 +649,35 @@ theorem hasStrictDerivAt_sinh (x : ℝ) : HasStrictDerivAt sinh (cosh x) x :=
 theorem hasDerivAt_sinh (x : ℝ) : HasDerivAt sinh (cosh x) x :=
   (Complex.hasDerivAt_sinh x).real_of_complex
 
+theorem isEquivalent_sinh : sinh ~[𝓝 0] id := by simpa using (hasDerivAt_sinh 0).isLittleO
+
+@[fun_prop]
 theorem contDiff_sinh {n} : ContDiff ℝ n sinh :=
   Complex.contDiff_sinh.real_of_complex
 
-@[fun_prop]
+@[simp]
 theorem differentiable_sinh : Differentiable ℝ sinh := fun x => (hasDerivAt_sinh x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_sinh : DifferentiableAt ℝ sinh x :=
   differentiable_sinh x
+
+/-- The function `Real.sinh` is real analytic. -/
+@[fun_prop]
+lemma analyticAt_sinh : AnalyticAt ℝ sinh x :=
+  contDiff_sinh.contDiffAt.analyticAt
+
+/-- The function `Real.sinh` is real analytic. -/
+lemma analyticWithinAt_sinh {s : Set ℝ} : AnalyticWithinAt ℝ sinh s x :=
+  contDiff_sinh.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Real.sinh` is real analytic. -/
+theorem analyticOnNhd_sinh {s : Set ℝ} : AnalyticOnNhd ℝ sinh s :=
+  fun _ _ ↦ analyticAt_sinh
+
+/-- The function `Real.sinh` is real analytic. -/
+lemma analyticOn_sinh {s : Set ℝ} : AnalyticOn ℝ sinh s :=
+  contDiff_sinh.contDiffOn.analyticOn
 
 @[simp]
 theorem deriv_sinh : deriv sinh = cosh :=
@@ -550,15 +689,33 @@ theorem hasStrictDerivAt_cosh (x : ℝ) : HasStrictDerivAt cosh (sinh x) x :=
 theorem hasDerivAt_cosh (x : ℝ) : HasDerivAt cosh (sinh x) x :=
   (Complex.hasDerivAt_cosh x).real_of_complex
 
+@[fun_prop]
 theorem contDiff_cosh {n} : ContDiff ℝ n cosh :=
   Complex.contDiff_cosh.real_of_complex
 
-@[fun_prop]
+@[simp]
 theorem differentiable_cosh : Differentiable ℝ cosh := fun x => (hasDerivAt_cosh x).differentiableAt
 
-@[fun_prop]
+@[simp]
 theorem differentiableAt_cosh : DifferentiableAt ℝ cosh x :=
   differentiable_cosh x
+
+/-- The function `Real.cosh` is real analytic. -/
+@[fun_prop]
+lemma analyticAt_cosh : AnalyticAt ℝ cosh x :=
+  contDiff_cosh.contDiffAt.analyticAt
+
+/-- The function `Real.cosh` is real analytic. -/
+lemma analyticWithinAt_cosh {s : Set ℝ} : AnalyticWithinAt ℝ cosh s x :=
+  contDiff_cosh.contDiffWithinAt.analyticWithinAt
+
+/-- The function `Real.cosh` is real analytic. -/
+theorem analyticOnNhd_cosh {s : Set ℝ} : AnalyticOnNhd ℝ cosh s :=
+  fun _ _ ↦ analyticAt_cosh
+
+/-- The function `Real.cosh` is real analytic. -/
+lemma analyticOn_cosh {s : Set ℝ} : AnalyticOn ℝ cosh s :=
+  contDiff_cosh.contDiffOn.analyticOn
 
 @[simp]
 theorem deriv_cosh : deriv cosh = sinh :=
@@ -624,12 +781,11 @@ theorem one_lt_cosh : 1 < cosh x ↔ x ≠ 0 :=
   cosh_zero ▸ cosh_lt_cosh.trans (by simp only [_root_.abs_zero, abs_pos])
 
 theorem sinh_sub_id_strictMono : StrictMono fun x => sinh x - x := by
-  -- Porting note: `by simp; abel` was just `by simp` in mathlib3.
   refine strictMono_of_odd_strictMonoOn_nonneg (fun x => by simp; abel) ?_
   refine strictMonoOn_of_deriv_pos (convex_Ici _) ?_ fun x hx => ?_
   · exact (continuous_sinh.sub continuous_id).continuousOn
   · rw [interior_Ici, mem_Ioi] at hx
-    rw [deriv_sub, deriv_sinh, deriv_id'', sub_pos, one_lt_cosh]
+    rw [deriv_fun_sub, deriv_sinh, deriv_id'', sub_pos, one_lt_cosh]
     exacts [hx.ne', differentiableAt_sinh, differentiableAt_id]
 
 @[simp]
@@ -653,6 +809,278 @@ theorem sinh_lt_self_iff : sinh x < x ↔ x < 0 :=
   lt_iff_lt_of_le_iff_le self_le_sinh_iff
 
 end Real
+
+section iteratedDeriv
+
+/-! ### Simp lemmas for iterated derivatives of `sin` and `cos`. -/
+
+namespace Complex
+
+@[simp]
+theorem iteratedDeriv_add_one_sin (n : ℕ) :
+    iteratedDeriv (n + 1) sin = iteratedDeriv n cos := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
+
+@[simp]
+theorem iteratedDeriv_add_one_cos (n : ℕ) :
+    iteratedDeriv (n + 1) cos = - iteratedDeriv n sin := by
+  induction n with
+  | zero => ext; simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ, deriv.neg']
+    ext x
+    simp
+
+@[simp]
+theorem iteratedDeriv_even_sin (n : ℕ) :
+    iteratedDeriv (2 * n) sin = (-1) ^ n * sin := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add, pow_succ]
+
+@[simp]
+theorem iteratedDeriv_even_cos (n : ℕ) :
+    iteratedDeriv (2 * n) cos = (-1) ^ n * cos := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add, pow_succ]
+
+theorem iteratedDeriv_odd_sin (n : ℕ) :
+    iteratedDeriv (2 * n + 1) sin = (-1) ^ n * cos := by simp
+
+theorem iteratedDeriv_odd_cos (n : ℕ) :
+    iteratedDeriv (2 * n + 1) cos = (-1) ^ (n + 1) * sin := by simp [pow_succ]
+
+theorem differentiable_iteratedDeriv_sin (n : ℕ) :
+    Differentiable ℂ (iteratedDeriv n sin) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_sin]
+
+theorem differentiable_iteratedDeriv_cos (n : ℕ) :
+    Differentiable ℂ (iteratedDeriv n cos) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_cos]
+
+@[simp]
+theorem iteratedDeriv_add_one_sinh (n : ℕ) :
+    iteratedDeriv (n + 1) sinh = iteratedDeriv n cosh := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
+
+@[simp]
+theorem iteratedDeriv_add_one_cosh (n : ℕ) :
+    iteratedDeriv (n + 1) cosh = iteratedDeriv n sinh := by
+  induction n with
+  | zero => ext; simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
+
+@[simp]
+theorem iteratedDeriv_even_sinh (n : ℕ) :
+    iteratedDeriv (2 * n) sinh = sinh := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add]
+
+@[simp]
+theorem iteratedDeriv_even_cosh (n : ℕ) :
+    iteratedDeriv (2 * n) cosh = cosh := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add]
+
+theorem iteratedDeriv_odd_sinh (n : ℕ) :
+    iteratedDeriv (2 * n + 1) sinh = cosh := by simp
+
+theorem iteratedDeriv_odd_cosh (n : ℕ) :
+    iteratedDeriv (2 * n + 1) cosh = sinh := by simp
+
+theorem differentiable_iteratedDeriv_sinh (n : ℕ) :
+    Differentiable ℂ (iteratedDeriv n sinh) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_sinh]
+
+theorem differentiable_iteratedDeriv_cosh (n : ℕ) :
+    Differentiable ℂ (iteratedDeriv n cosh) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_cosh]
+
+end Complex
+
+namespace Real
+
+@[simp]
+theorem iteratedDeriv_add_one_sin (n : ℕ) :
+    iteratedDeriv (n + 1) sin = iteratedDeriv n cos := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
+
+@[simp]
+theorem iteratedDeriv_add_one_cos (n : ℕ) :
+    iteratedDeriv (n + 1) cos = - iteratedDeriv n sin := by
+  induction n with
+  | zero => ext; simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ, deriv.neg']
+    ext x
+    simp
+
+@[simp]
+theorem iteratedDeriv_even_sin (n : ℕ) :
+    iteratedDeriv (2 * n) sin = (-1) ^ n * sin := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add, pow_succ]
+
+@[simp]
+theorem iteratedDeriv_even_cos (n : ℕ) :
+    iteratedDeriv (2 * n) cos = (-1) ^ n * cos := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add, pow_succ]
+
+theorem iteratedDeriv_odd_sin (n : ℕ) :
+    iteratedDeriv (2 * n + 1) sin = (-1) ^ n * cos := by simp
+
+theorem iteratedDeriv_odd_cos (n : ℕ) :
+    iteratedDeriv (2 * n + 1) cos = (-1) ^ (n + 1) * sin := by simp [pow_succ]
+
+theorem differentiable_iteratedDeriv_sin (n : ℕ) :
+    Differentiable ℝ (iteratedDeriv n sin) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_sin]
+
+theorem differentiable_iteratedDeriv_cos (n : ℕ) :
+    Differentiable ℝ (iteratedDeriv n cos) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_cos]
+
+theorem abs_iteratedDeriv_sin_le_one (n : ℕ) (x : ℝ) :
+    |iteratedDeriv n sin x| ≤ 1 :=
+  match n with
+  | 0 => by simpa using Real.abs_sin_le_one x
+  | 1 => by simpa using Real.abs_cos_le_one x
+  | n + 2 => by simpa using abs_iteratedDeriv_sin_le_one n x
+
+theorem abs_iteratedDeriv_cos_le_one (n : ℕ) (x : ℝ) :
+    |iteratedDeriv n cos x| ≤ 1 :=
+  match n with
+  | 0 => by simpa using Real.abs_cos_le_one x
+  | 1 => by simpa using Real.abs_sin_le_one x
+  | n + 2 => by simpa using abs_iteratedDeriv_cos_le_one n x
+
+@[simp]
+theorem iteratedDeriv_add_one_sinh (n : ℕ) :
+    iteratedDeriv (n + 1) sinh = iteratedDeriv n cosh := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
+
+@[simp]
+theorem iteratedDeriv_add_one_cosh (n : ℕ) :
+    iteratedDeriv (n + 1) cosh = iteratedDeriv n sinh := by
+  induction n with
+  | zero => ext; simp
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
+
+@[simp]
+theorem iteratedDeriv_even_sinh (n : ℕ) :
+    iteratedDeriv (2 * n) sinh = sinh := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add]
+
+@[simp]
+theorem iteratedDeriv_even_cosh (n : ℕ) :
+    iteratedDeriv (2 * n) cosh = cosh := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp_all [mul_add]
+
+theorem iteratedDeriv_odd_sinh (n : ℕ) :
+    iteratedDeriv (2 * n + 1) sinh = cosh := by simp
+
+theorem iteratedDeriv_odd_cosh (n : ℕ) :
+    iteratedDeriv (2 * n + 1) cosh = sinh := by simp
+
+theorem differentiable_iteratedDeriv_sinh (n : ℕ) :
+    Differentiable ℝ (iteratedDeriv n sinh) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_sinh]
+
+theorem differentiable_iteratedDeriv_cosh (n : ℕ) :
+    Differentiable ℝ (iteratedDeriv n cosh) :=
+  match n with
+  | 0 => by simp
+  | 1 => by simp
+  | n + 2 => by simp [differentiable_iteratedDeriv_cosh]
+
+@[simp]
+theorem iteratedDerivWithin_sin_Icc (n : ℕ) {a b : ℝ} (h : a < b) {x : ℝ} (hx : x ∈ Icc a b) :
+    iteratedDerivWithin n sin (Icc a b) x = iteratedDeriv n sin x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Icc h) contDiff_sin.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_cos_Icc (n : ℕ) {a b : ℝ} (h : a < b) {x : ℝ} (hx : x ∈ Icc a b) :
+    iteratedDerivWithin n cos (Icc a b) x = iteratedDeriv n cos x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Icc h) contDiff_cos.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_sinh_Icc (n : ℕ) {a b : ℝ} (h : a < b) {x : ℝ} (hx : x ∈ Icc a b) :
+    iteratedDerivWithin n sinh (Icc a b) x = iteratedDeriv n sinh x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Icc h) contDiff_sinh.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_cosh_Icc (n : ℕ) {a b : ℝ} (h : a < b) {x : ℝ} (hx : x ∈ Icc a b) :
+    iteratedDerivWithin n cosh (Icc a b) x = iteratedDeriv n cosh x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Icc h) contDiff_cosh.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_sin_Ioo (n : ℕ) {a b x : ℝ} (hx : x ∈ Ioo a b) :
+    iteratedDerivWithin n sin (Ioo a b) x = iteratedDeriv n sin x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Ioo a b) contDiff_sin.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_cos_Ioo (n : ℕ) {a b x : ℝ} (hx : x ∈ Ioo a b) :
+    iteratedDerivWithin n cos (Ioo a b) x = iteratedDeriv n cos x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Ioo a b) contDiff_cos.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_sinh_Ioo (n : ℕ) {a b x : ℝ} (hx : x ∈ Ioo a b) :
+    iteratedDerivWithin n sinh (Ioo a b) x = iteratedDeriv n sinh x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Ioo a b) contDiff_sinh.contDiffAt hx
+
+@[simp]
+theorem iteratedDerivWithin_cosh_Ioo (n : ℕ) {a b x : ℝ} (hx : x ∈ Ioo a b) :
+    iteratedDerivWithin n cosh (Ioo a b) x = iteratedDeriv n cosh x :=
+  iteratedDerivWithin_eq_iteratedDeriv (uniqueDiffOn_Ioo a b) contDiff_cosh.contDiffAt hx
+
+end Real
+
+end iteratedDeriv
 
 section
 
@@ -764,8 +1192,8 @@ section
 /-! ### Simp lemmas for derivatives of `fun x => Real.cos (f x)` etc., `f : E → ℝ` -/
 
 
-variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] {f : E → ℝ} {f' : E →L[ℝ] ℝ} {x : E}
-  {s : Set E}
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] {f : E → ℝ} {f' : StrongDual ℝ E}
+  {x : E} {s : Set E}
 
 /-! #### `Real.cos` -/
 
@@ -786,7 +1214,7 @@ theorem DifferentiableWithinAt.cos (hf : DifferentiableWithinAt ℝ f s x) :
     DifferentiableWithinAt ℝ (fun x => Real.cos (f x)) s x :=
   hf.hasFDerivWithinAt.cos.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.cos (hc : DifferentiableAt ℝ f x) :
     DifferentiableAt ℝ (fun x => Real.cos (f x)) x :=
   hc.hasFDerivAt.cos.differentiableAt
@@ -794,7 +1222,7 @@ theorem DifferentiableAt.cos (hc : DifferentiableAt ℝ f x) :
 theorem DifferentiableOn.cos (hc : DifferentiableOn ℝ f s) :
     DifferentiableOn ℝ (fun x => Real.cos (f x)) s := fun x h => (hc x h).cos
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.cos (hc : Differentiable ℝ f) : Differentiable ℝ fun x => Real.cos (f x) :=
   fun x => (hc x).cos
 
@@ -839,7 +1267,7 @@ theorem DifferentiableWithinAt.sin (hf : DifferentiableWithinAt ℝ f s x) :
     DifferentiableWithinAt ℝ (fun x => Real.sin (f x)) s x :=
   hf.hasFDerivWithinAt.sin.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.sin (hc : DifferentiableAt ℝ f x) :
     DifferentiableAt ℝ (fun x => Real.sin (f x)) x :=
   hc.hasFDerivAt.sin.differentiableAt
@@ -847,7 +1275,7 @@ theorem DifferentiableAt.sin (hc : DifferentiableAt ℝ f x) :
 theorem DifferentiableOn.sin (hc : DifferentiableOn ℝ f s) :
     DifferentiableOn ℝ (fun x => Real.sin (f x)) s := fun x h => (hc x h).sin
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.sin (hc : Differentiable ℝ f) : Differentiable ℝ fun x => Real.sin (f x) :=
   fun x => (hc x).sin
 
@@ -892,7 +1320,7 @@ theorem DifferentiableWithinAt.cosh (hf : DifferentiableWithinAt ℝ f s x) :
     DifferentiableWithinAt ℝ (fun x => Real.cosh (f x)) s x :=
   hf.hasFDerivWithinAt.cosh.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.cosh (hc : DifferentiableAt ℝ f x) :
     DifferentiableAt ℝ (fun x => Real.cosh (f x)) x :=
   hc.hasFDerivAt.cosh.differentiableAt
@@ -900,7 +1328,7 @@ theorem DifferentiableAt.cosh (hc : DifferentiableAt ℝ f x) :
 theorem DifferentiableOn.cosh (hc : DifferentiableOn ℝ f s) :
     DifferentiableOn ℝ (fun x => Real.cosh (f x)) s := fun x h => (hc x h).cosh
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.cosh (hc : Differentiable ℝ f) : Differentiable ℝ fun x => Real.cosh (f x) :=
   fun x => (hc x).cosh
 
@@ -947,7 +1375,7 @@ theorem DifferentiableWithinAt.sinh (hf : DifferentiableWithinAt ℝ f s x) :
     DifferentiableWithinAt ℝ (fun x => Real.sinh (f x)) s x :=
   hf.hasFDerivWithinAt.sinh.differentiableWithinAt
 
-@[simp]
+@[simp, fun_prop]
 theorem DifferentiableAt.sinh (hc : DifferentiableAt ℝ f x) :
     DifferentiableAt ℝ (fun x => Real.sinh (f x)) x :=
   hc.hasFDerivAt.sinh.differentiableAt
@@ -955,7 +1383,7 @@ theorem DifferentiableAt.sinh (hc : DifferentiableAt ℝ f x) :
 theorem DifferentiableOn.sinh (hc : DifferentiableOn ℝ f s) :
     DifferentiableOn ℝ (fun x => Real.sinh (f x)) s := fun x h => (hc x h).sinh
 
-@[simp]
+@[simp, fun_prop]
 theorem Differentiable.sinh (hc : Differentiable ℝ f) : Differentiable ℝ fun x => Real.sinh (f x) :=
   fun x => (hc x).sinh
 
@@ -1039,7 +1467,7 @@ private alias ⟨_, sinh_ne_zero_of_ne_zero⟩ := Real.sinh_ne_zero
 /-- Extension for the `positivity` tactic: `Real.sinh` is positive/nonnegative/nonzero if its input
 is. -/
 @[positivity Real.sinh _]
-def evalSinh : PositivityExt where eval {u α} _ _ e := do
+meta def evalSinh : PositivityExt where eval {u α} _ _ e := do
   let zα : Q(Zero ℝ) := q(inferInstance)
   let pα : Q(PartialOrder ℝ) := q(inferInstance)
   match u, α, e with

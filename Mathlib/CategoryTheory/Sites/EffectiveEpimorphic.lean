@@ -3,8 +3,10 @@ Copyright (c) 2023 Adam Topaz. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam Topaz
 -/
-import Mathlib.CategoryTheory.Sites.Sieves
-import Mathlib.CategoryTheory.EffectiveEpi.Basic
+module
+
+public import Mathlib.CategoryTheory.Sites.Sieves
+public import Mathlib.CategoryTheory.EffectiveEpi.Basic
 /-!
 
 # Effective epimorphic sieves
@@ -18,6 +20,8 @@ The analogous statement for a family of morphisms is in the theorem
 `CategoryTheory.Sieve.effectiveEpimorphic_family`.
 
 -/
+
+@[expose] public section
 
 namespace CategoryTheory
 
@@ -61,16 +65,16 @@ the arrow is an effective epi.
 -/
 def isColimitOfEffectiveEpiStruct {X Y : C} (f : Y ⟶ X) (Hf : EffectiveEpiStruct f) :
     IsColimit (Sieve.generateSingleton f : Presieve X).cocone :=
-  letI D := FullSubcategory fun T : Over X => Sieve.generateSingleton f T.hom
+  letI D := ObjectProperty.FullSubcategory fun T : Over X => Sieve.generateSingleton f T.hom
   letI F : D ⥤ _ := (Sieve.generateSingleton f).arrows.diagram
   { desc := fun S => Hf.desc (S.ι.app ⟨Over.mk f, ⟨𝟙 _, by simp⟩⟩) <| by
       intro Z g₁ g₂ h
       let Y' : D := ⟨Over.mk f, 𝟙 _, by simp⟩
       let Z' : D := ⟨Over.mk (g₁ ≫ f), g₁, rfl⟩
       let g₁' : Z' ⟶ Y' := Over.homMk g₁
-      let g₂' : Z' ⟶ Y' := Over.homMk g₂ (by simp [h])
+      let g₂' : Z' ⟶ Y' := Over.homMk g₂ (by simp [Y', Z', h])
       change F.map g₁' ≫ _ = F.map g₂' ≫ _
-      simp only [S.w]
+      simp only [Y', F, S.w]
     fac := by
       rintro S ⟨T,g,hT⟩
       dsimp
@@ -113,7 +117,7 @@ def effectiveEpiStructOfIsColimit {X Y : C} (f : Y ⟶ X)
       intro W e h
       dsimp
       have := Hf.fac (aux e h) ⟨Over.mk f, 𝟙 _, by simp⟩
-      dsimp at this; rw [this]; clear this
+      dsimp [aux] at this; rw [this]; clear this
       nth_rewrite 2 [← Category.id_comp e]
       apply h
       generalize_proofs hh
@@ -137,7 +141,7 @@ theorem Sieve.effectiveEpimorphic_singleton {X Y : C} (f : Y ⟶ X) :
     constructor
     apply Nonempty.map (effectiveEpiStructOfIsColimit _) h
   · rintro ⟨h⟩
-    show Nonempty _
+    change Nonempty _
     rw [Sieve.generateSingleton_eq]
     apply Nonempty.map (isColimitOfEffectiveEpiStruct _) h
 
@@ -170,7 +174,7 @@ the family is an effective epi.
 def isColimitOfEffectiveEpiFamilyStruct {B : C} {α : Type*}
     (X : α → C) (π : (a : α) → (X a ⟶ B)) (H : EffectiveEpiFamilyStruct X π) :
     IsColimit (Sieve.generateFamily X π : Presieve B).cocone :=
-  letI D := FullSubcategory fun T : Over B => Sieve.generateFamily X π T.hom
+  letI D := ObjectProperty.FullSubcategory fun T : Over B => Sieve.generateFamily X π T.hom
   letI F : D ⥤ _ := (Sieve.generateFamily X π).arrows.diagram
   { desc := fun S => H.desc (fun a => S.ι.app ⟨Over.mk (π a), ⟨a,𝟙 _, by simp⟩⟩) <| by
       intro Z a₁ a₂ g₁ g₂ h
@@ -181,7 +185,7 @@ def isColimitOfEffectiveEpiFamilyStruct {B : C} {α : Type*}
       let i₁ : Z' ⟶ A₁ := Over.homMk g₁
       let i₂ : Z' ⟶ A₂ := Over.homMk g₂
       change F.map i₁ ≫ _ = F.map i₂ ≫ _
-      simp only [S.w]
+      simp only [F, A₁, A₂, S.w]
     fac := by
       intro S ⟨T, a, (g : T.left ⟶ X a), hT⟩
       dsimp
@@ -226,7 +230,7 @@ def effectiveEpiFamilyStructOfIsColimit {B : C} {α : Type*}
       intro W e h a
       dsimp
       have := H.fac (aux e h) ⟨Over.mk (π a), a, 𝟙 _, by simp⟩
-      dsimp at this; rw [this]; clear this
+      dsimp [aux] at this; rw [this]; clear this
       conv_rhs => rw [← Category.id_comp (e a)]
       apply h
       generalize_proofs h1 h2
@@ -250,7 +254,7 @@ theorem Sieve.effectiveEpimorphic_family {B : C} {α : Type*}
     constructor
     apply Nonempty.map (effectiveEpiFamilyStructOfIsColimit _ _) h
   · rintro ⟨h⟩
-    show Nonempty _
+    change Nonempty _
     rw [Sieve.generateFamily_eq]
     apply Nonempty.map (isColimitOfEffectiveEpiFamilyStruct _ _) h
 

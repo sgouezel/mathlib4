@@ -3,8 +3,11 @@ Copyright (c) 2022 Andrew Yang. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Andrew Yang
 -/
-import Mathlib.AlgebraicGeometry.Pullbacks
-import Mathlib.AlgebraicGeometry.AffineScheme
+module
+
+public import Mathlib.CategoryTheory.Limits.Shapes.Opposites.Products
+public import Mathlib.AlgebraicGeometry.Pullbacks
+public import Mathlib.AlgebraicGeometry.AffineScheme
 
 /-!
 # (Co)Limits of Schemes
@@ -24,38 +27,51 @@ We construct various limits and colimits in the category of schemes.
 
 -/
 
+@[expose] public section
+
 suppress_compilation
 
 
-universe u
+universe u v
 
 open CategoryTheory CategoryTheory.Limits Opposite TopologicalSpace
+
+attribute [local instance] Opposite.small
 
 namespace AlgebraicGeometry
 
 /-- `Spec ℤ` is the terminal object in the category of schemes. -/
-noncomputable def specZIsTerminal : IsTerminal (Spec (CommRingCat.of ℤ)) :=
+noncomputable def specZIsTerminal : IsTerminal (Spec <| .of ℤ) :=
   @IsTerminal.isTerminalObj _ _ _ _ Scheme.Spec _ inferInstance
     (terminalOpOfInitial CommRingCat.zIsInitial)
+
+/-- `Spec ℤ` is the terminal object in the category of schemes. -/
+noncomputable def specULiftZIsTerminal : IsTerminal (Spec <| .of <| ULift.{u} ℤ) :=
+  @IsTerminal.isTerminalObj _ _ _ _ Scheme.Spec _ inferInstance
+    (terminalOpOfInitial CommRingCat.isInitial)
 
 instance : HasTerminal Scheme :=
   hasTerminal_of_hasTerminal_of_preservesLimit Scheme.Spec
 
 instance : IsAffine (⊤_ Scheme.{u}) :=
-  isAffine_of_isIso (PreservesTerminal.iso Scheme.Spec).inv
+  .of_isIso (PreservesTerminal.iso Scheme.Spec).inv
 
 instance : HasFiniteLimits Scheme :=
   hasFiniteLimits_of_hasTerminal_and_pullbacks
 
 instance (X : Scheme.{u}) : X.Over (⊤_ _) := ⟨terminal.from _⟩
-instance {X Y : Scheme.{u}} (f : X ⟶ Y) : f.IsOver (⊤_ _) := ⟨terminal.hom_ext _ _⟩
+instance {X Y : Scheme.{u}} [X.Over (⊤_ Scheme)] [Y.Over (⊤_ Scheme)] (f : X ⟶ Y) :
+    @Scheme.Hom.IsOver _ _ f (⊤_ Scheme) ‹_› ‹_› := ⟨Subsingleton.elim _ _⟩
+
+instance {X : Scheme} : Subsingleton (X.Over (⊤_ Scheme)) :=
+  ⟨fun ⟨a⟩ ⟨b⟩ ↦ by simp [Subsingleton.elim a b]⟩
 
 section Initial
 
 /-- The map from the empty scheme. -/
 @[simps]
 def Scheme.emptyTo (X : Scheme.{u}) : ∅ ⟶ X :=
-  ⟨{  base := ⟨fun x => PEmpty.elim x, by fun_prop⟩
+  ⟨{  base := TopCat.ofHom ⟨fun x => PEmpty.elim x, by fun_prop⟩
       c := { app := fun _ => CommRingCat.punitIsTerminal.from _ } }, fun x => PEmpty.elim x⟩
 
 @[ext]
@@ -79,39 +95,39 @@ theorem emptyIsInitial_to : emptyIsInitial.to = Scheme.emptyTo :=
 instance : IsEmpty (∅ : Scheme.{u}) :=
   show IsEmpty PEmpty by infer_instance
 
-instance spec_punit_isEmpty : IsEmpty (Spec (CommRingCat.of PUnit.{u+1})) :=
+instance spec_punit_isEmpty : IsEmpty (Spec <| .of PUnit.{u+1}) :=
   inferInstanceAs <| IsEmpty (PrimeSpectrum PUnit)
 
 instance (priority := 100) isOpenImmersion_of_isEmpty {X Y : Scheme} (f : X ⟶ Y)
     [IsEmpty X] : IsOpenImmersion f := by
-  apply (config := { allowSynthFailures := true }) IsOpenImmersion.of_stalk_iso
+  apply (config := { allowSynthFailures := true }) IsOpenImmersion.of_isIso_stalkMap
   · exact .of_isEmpty (X := X) _
   · intro (i : X); exact isEmptyElim i
 
 instance (priority := 100) isIso_of_isEmpty {X Y : Scheme} (f : X ⟶ Y) [IsEmpty Y] :
     IsIso f := by
-  haveI : IsEmpty X := f.base.1.isEmpty
+  haveI : IsEmpty X := f.base.hom.1.isEmpty
   have : Epi f.base := by
     rw [TopCat.epi_iff_surjective]; rintro (x : Y)
     exact isEmptyElim x
-  apply IsOpenImmersion.to_iso
+  apply IsOpenImmersion.isIso
 
 /-- A scheme is initial if its underlying space is empty . -/
 noncomputable def isInitialOfIsEmpty {X : Scheme} [IsEmpty X] : IsInitial X :=
   emptyIsInitial.ofIso (asIso <| emptyIsInitial.to _)
 
 /-- `Spec 0` is the initial object in the category of schemes. -/
-noncomputable def specPunitIsInitial : IsInitial (Spec (.of PUnit.{u+1})) :=
+noncomputable def specPunitIsInitial : IsInitial (Spec <| .of PUnit.{u+1}) :=
   emptyIsInitial.ofIso (asIso <| emptyIsInitial.to _)
 
 instance (priority := 100) isAffine_of_isEmpty {X : Scheme} [IsEmpty X] : IsAffine X :=
-  isAffine_of_isIso (inv (emptyIsInitial.to X) ≫ emptyIsInitial.to (Spec (.of PUnit)))
+  .of_isIso (inv (emptyIsInitial.to X) ≫ emptyIsInitial.to (Spec <| .of PUnit))
 
 instance : HasInitial Scheme.{u} :=
   hasInitial_of_unique ∅
 
 instance initial_isEmpty : IsEmpty (⊥_ Scheme) :=
-  ⟨fun x => ((initial.to Scheme.empty : _).base x).elim⟩
+  ⟨fun x => ((initial.to Scheme.empty :) x).elim⟩
 
 theorem isAffineOpen_bot (X : Scheme) : IsAffineOpen (⊥ : X.Opens) :=
   @isAffine_of_isEmpty _ (inferInstanceAs (IsEmpty (∅ : Set X)))
@@ -119,147 +135,48 @@ theorem isAffineOpen_bot (X : Scheme) : IsAffineOpen (⊥ : X.Opens) :=
 instance : HasStrictInitialObjects Scheme :=
   hasStrictInitialObjects_of_initial_is_strict fun A f => by infer_instance
 
+instance {X : Scheme} [IsEmpty X] (U : X.Opens) : Subsingleton Γ(X, U) := by
+  obtain rfl : U = ⊥ := Subsingleton.elim _ _; infer_instance
+
+-- This is also true for schemes with two points.
+-- But there are non-affine schemes with three points.
+instance (priority := low) {X : Scheme.{u}} [Subsingleton X] : IsAffine X := by
+  cases isEmpty_or_nonempty X with
+  | inl h => infer_instance
+  | inr h =>
+  obtain ⟨x⟩ := h
+  obtain ⟨_, ⟨U, hU : IsAffine _, rfl⟩, hxU, -⟩ :=
+    X.isBasis_affineOpens.exists_subset_of_mem_open (a := x) (by trivial) isOpen_univ
+  obtain rfl : U = ⊤ := by ext y; simpa [Subsingleton.elim y x]
+  exact .of_isIso (Scheme.topIso X).inv
+
 end Initial
 
 section Coproduct
 
 variable {ι : Type u} (f : ι → Scheme.{u})
 
-
-/-- (Implementation Detail) The glue data associated to a disjoint union. -/
-@[simps]
-noncomputable
-def disjointGlueData' : GlueData' Scheme where
-  J := ι
-  U := f
-  V _ _ _ := ∅
-  f _ _ _ := Scheme.emptyTo _
-  t _ _ _ := 𝟙 _
-  t' _ _ _ _ _ _ := Limits.pullback.fst _ _ ≫ Scheme.emptyTo _
-  t_fac _ _ _ _ _ _ := emptyIsInitial.strict_hom_ext _ _
-  t_inv _ _ _ := Category.comp_id _
-  cocycle _ _ _ _ _ _ := (emptyIsInitial.ofStrict (pullback.fst _ _)).hom_ext _ _
-  f_mono _ _ := by dsimp only; infer_instance
-
-/-- (Implementation Detail) The glue data associated to a disjoint union. -/
-@[simps! J V U f t]
-noncomputable
-def disjointGlueData : Scheme.GlueData where
-  __ := GlueData.ofGlueData' (disjointGlueData' f)
-  f_open i j := by
-    dsimp only [GlueData.ofGlueData', GlueData'.f', disjointGlueData']
-    split <;> infer_instance
-
-/-- (Implementation Detail) The cofan in `LocallyRingedSpace` associated to a disjoint union. -/
-noncomputable
-def toLocallyRingedSpaceCoproductCofan : Cofan (Scheme.toLocallyRingedSpace ∘ f) :=
-  Cofan.mk (disjointGlueData f).toLocallyRingedSpaceGlueData.glued
-    (disjointGlueData f).toLocallyRingedSpaceGlueData.ι
-
-/-- (Implementation Detail)
-The cofan in `LocallyRingedSpace` associated to a disjoint union is a colimit. -/
-noncomputable
-def toLocallyRingedSpaceCoproductCofanIsColimit :
-    IsColimit (toLocallyRingedSpaceCoproductCofan f) := by
-  fapply mkCofanColimit
-  · refine fun t ↦ Multicoequalizer.desc _ _ t.inj ?_
-    rintro ⟨i, j⟩
-    simp only [GlueData.diagram, disjointGlueData_J, disjointGlueData_V, disjointGlueData_U,
-      disjointGlueData_f, disjointGlueData_t, Category.comp_id, Category.assoc,
-      GlueData.mapGlueData_J, disjointGlueData_J, GlueData.mapGlueData_V,
-      disjointGlueData_V, Scheme.forgetToLocallyRingedSpace_obj, GlueData.mapGlueData_U,
-      disjointGlueData_U, GlueData.mapGlueData_f, disjointGlueData_f, Category.comp_id,
-      Scheme.forgetToLocallyRingedSpace_map, GlueData.mapGlueData_t, disjointGlueData_t]
-    split_ifs with h
-    · subst h
-      simp only [eqToHom_refl, ↓reduceDIte, ← Category.assoc, GlueData'.f']
-      congr
-    · apply Limits.IsInitial.hom_ext
-      rw [if_neg h]
-      exact LocallyRingedSpace.emptyIsInitial
-  · exact fun _ _ ↦ Multicoequalizer.π_desc _ _ _ _ _
-  · intro i m h
-    apply Multicoequalizer.hom_ext _ _ _ fun j ↦ ?_
-    rw [Multicoequalizer.π_desc]
-    exact h j
+variable {σ : Type v} (g : σ → Scheme.{u})
 
 noncomputable
-instance : CreatesColimit (Discrete.functor f) Scheme.forgetToLocallyRingedSpace :=
-  createsColimitOfFullyFaithfulOfIso (disjointGlueData f).gluedScheme <|
-    let F : Discrete.functor f ⋙ Scheme.forgetToLocallyRingedSpace ≅
-      Discrete.functor (Scheme.toLocallyRingedSpace ∘ f) := Discrete.natIsoFunctor
-    have := (IsColimit.precomposeHomEquiv F _).symm (toLocallyRingedSpaceCoproductCofanIsColimit f)
-    (colimit.isoColimitCocone ⟨_, this⟩).symm
+instance [Small.{u} σ] :
+    CreatesColimitsOfShape (Discrete σ) Scheme.forgetToLocallyRingedSpace.{u} where
 
-noncomputable
-instance : CreatesColimitsOfShape (Discrete ι) Scheme.forgetToLocallyRingedSpace := by
-  constructor
-  intro K
-  exact createsColimitOfIsoDiagram _ (Discrete.natIsoFunctor (F := K)).symm
-
-noncomputable
-instance : PreservesColimitsOfShape (Discrete ι) Scheme.forgetToTop :=
-  inferInstanceAs (PreservesColimitsOfShape (Discrete ι) (Scheme.forgetToLocallyRingedSpace ⋙
+instance [Small.{u} σ] : PreservesColimitsOfShape (Discrete σ) Scheme.forgetToTop.{u} :=
+  inferInstanceAs (PreservesColimitsOfShape (Discrete σ) (Scheme.forgetToLocallyRingedSpace ⋙
       LocallyRingedSpace.forgetToSheafedSpace ⋙ SheafedSpace.forget CommRingCat))
 
-instance : HasCoproducts.{u} Scheme.{u} :=
-  fun _ ↦ ⟨fun _ ↦ hasColimit_of_created _ Scheme.forgetToLocallyRingedSpace⟩
-
-instance : HasCoproducts.{0} Scheme.{u} := has_smallest_coproducts_of_hasCoproducts
-
-noncomputable
-instance {ι : Type} : PreservesColimitsOfShape (Discrete ι) Scheme.forgetToTop :=
-  preservesColimitsOfShapeOfEquiv (Discrete.equivalence Equiv.ulift : Discrete (ULift.{u} ι) ≌ _) _
-
-noncomputable
-instance {ι : Type} : PreservesColimitsOfShape (Discrete ι) Scheme.forgetToLocallyRingedSpace :=
-  preservesColimitsOfShapeOfEquiv (Discrete.equivalence Equiv.ulift : Discrete (ULift.{u} ι) ≌ _) _
-
-/-- (Implementation Detail) Coproduct of schemes is isomorphic to the disjoint union. -/
-noncomputable
-def sigmaIsoGlued : ∐ f ≅ (disjointGlueData f).glued :=
-  Scheme.fullyFaithfulForgetToLocallyRingedSpace.preimageIso
-    (PreservesCoproduct.iso _ _ ≪≫
-      colimit.isoColimitCocone ⟨_, toLocallyRingedSpaceCoproductCofanIsColimit f⟩ ≪≫
-        (disjointGlueData f).isoLocallyRingedSpace.symm)
-
-@[reassoc (attr := simp)]
-lemma ι_sigmaIsoGlued_inv (i) : (disjointGlueData f).ι i ≫ (sigmaIsoGlued f).inv = Sigma.ι f i := by
-  apply Scheme.forgetToLocallyRingedSpace.map_injective
-  dsimp [sigmaIsoGlued]
-  simp only [Category.assoc]
-  refine ((disjointGlueData f).ι_gluedIso_hom_assoc Scheme.forgetToLocallyRingedSpace i _).trans ?_
-  refine (colimit.isoColimitCocone_ι_inv_assoc
-    ⟨_, toLocallyRingedSpaceCoproductCofanIsColimit f⟩ ⟨i⟩ _).trans ?_
-  exact ι_comp_sigmaComparison Scheme.forgetToLocallyRingedSpace _ _
-
-@[reassoc (attr := simp)]
-lemma ι_sigmaIsoGlued_hom (i) :
-    Sigma.ι f i ≫ (sigmaIsoGlued f).hom = (disjointGlueData f).ι i := by
-  rw [← ι_sigmaIsoGlued_inv, Category.assoc, Iso.inv_hom_id, Category.comp_id]
-
-instance (i) : IsOpenImmersion (Sigma.ι f i) := by
-  rw [← ι_sigmaIsoGlued_inv]
-  infer_instance
+instance [Small.{u} σ] : HasColimitsOfShape (Discrete σ) Scheme.{u} :=
+  ⟨fun _ ↦ hasColimit_of_created _ Scheme.forgetToLocallyRingedSpace⟩
 
 lemma sigmaι_eq_iff (i j : ι) (x y) :
-    (Sigma.ι f i).base x = (Sigma.ι f j).base y ↔
-      (Sigma.mk i x : Σ i, f i) = Sigma.mk j y := by
-  constructor
-  · intro H
-    rw [← ι_sigmaIsoGlued_inv, ← ι_sigmaIsoGlued_inv] at H
-    erw [(TopCat.homeoOfIso
-      (Scheme.forgetToTop.mapIso (sigmaIsoGlued f))).symm.injective.eq_iff] at H
-    by_cases h : i = j
-    · subst h
-      simp only [Sigma.mk.inj_iff, heq_eq_eq, true_and]
-      exact ((disjointGlueData f).ι i).isOpenEmbedding.injective H
-    · obtain (e | ⟨z, _⟩) := (Scheme.GlueData.ι_eq_iff _ _ _ _ _).mp H
-      · exact (h (Sigma.mk.inj_iff.mp e).1).elim
-      · simp only [disjointGlueData_J, disjointGlueData_V, h, ↓reduceIte] at z
-        cases z
-  · rintro ⟨rfl⟩
-    rfl
+    Sigma.ι f i x = Sigma.ι f j y ↔ (Sigma.mk i x : Σ i, f i) = Sigma.mk j y := by
+  refine (Scheme.IsLocallyDirected.ι_eq_ι_iff _).trans ⟨?_, ?_⟩
+  · rintro ⟨k, ⟨⟨⟨⟩⟩⟩, ⟨⟨⟨⟩⟩⟩, x, rfl, rfl⟩; simp
+  · simp only [Discrete.functor_obj_eq_as, Sigma.mk.injEq]
+    rintro ⟨rfl, e⟩
+    obtain rfl := (heq_eq_eq x y).mp e
+    exact ⟨⟨i⟩, 𝟙 _, 𝟙 _, x, by simp⟩
 
 /-- The images of each component in the coproduct is disjoint. -/
 lemma disjoint_opensRange_sigmaι (i j : ι) (h : i ≠ j) :
@@ -270,39 +187,90 @@ lemma disjoint_opensRange_sigmaι (i j : ι) (h : i ≠ j) :
   obtain ⟨rfl⟩ := (sigmaι_eq_iff _ _ _ _ _).mp hy
   cases h rfl
 
-lemma exists_sigmaι_eq (x : (∐ f : _)) : ∃ i y, (Sigma.ι f i).base y = x := by
-  obtain ⟨i, y, e⟩ := (disjointGlueData f).ι_jointly_surjective ((sigmaIsoGlued f).hom.base x)
-  refine ⟨i, y, (sigmaIsoGlued f).hom.isOpenEmbedding.injective ?_⟩
-  rwa [← Scheme.comp_base_apply, ι_sigmaIsoGlued_hom]
-
-lemma iSup_opensRange_sigmaι : ⨆ i, (Sigma.ι f i).opensRange = ⊤ :=
-  eq_top_iff.mpr fun x ↦ by simpa using exists_sigmaι_eq f x
-
-/-- The open cover of the coproduct. -/
-@[simps obj map]
-noncomputable
-def sigmaOpenCover : (∐ f).OpenCover where
-  J := ι
-  obj := f
-  map := Sigma.ι f
-  f x := (exists_sigmaι_eq f x).choose
-  covers x := (exists_sigmaι_eq f x).choose_spec
+/-- The cover of `∐ X` by the `Xᵢ`. -/
+@[simps!]
+noncomputable def sigmaOpenCover [Small.{u} σ] : (∐ g).OpenCover :=
+  (Scheme.IsLocallyDirected.openCover (Discrete.functor g)).copy σ g (Sigma.ι _)
+  (discreteEquiv.symm) (fun _ ↦ Iso.refl _) (fun _ ↦ rfl)
 
 /-- The underlying topological space of the coproduct is homeomorphic to the disjoint union. -/
 noncomputable
-def sigmaMk : (Σ i, f i) ≃ₜ (∐ f : _) :=
+def sigmaMk : (Σ i, f i) ≃ₜ (∐ f :) :=
   TopCat.homeoOfIso ((colimit.isoColimitCocone ⟨_, TopCat.sigmaCofanIsColimit _⟩).symm ≪≫
     (PreservesCoproduct.iso Scheme.forgetToTop f).symm)
 
 @[simp]
 lemma sigmaMk_mk (i) (x : f i) :
-    sigmaMk f (.mk i x) = (Sigma.ι f i).base x := by
-  show ((TopCat.sigmaCofan (fun x ↦ (f x).toTopCat)).inj i ≫
+    sigmaMk f (.mk i x) = Sigma.ι f i x := by
+  change ((TopCat.sigmaCofan (fun x ↦ (f x).toTopCat)).inj i ≫
     (colimit.isoColimitCocone ⟨_, TopCat.sigmaCofanIsColimit _⟩).inv ≫ _) x =
       Scheme.forgetToTop.map (Sigma.ι f i) x
-  congr 1
+  congr 2
   refine (colimit.isoColimitCocone_ι_inv_assoc ⟨_, TopCat.sigmaCofanIsColimit _⟩ _ _).trans ?_
   exact ι_comp_sigmaComparison Scheme.forgetToTop _ _
+
+open scoped Function in
+private lemma isOpenImmersion_sigmaDesc_aux
+    {X : Scheme.{u}} (α : ∀ i, f i ⟶ X) [∀ i, IsOpenImmersion (α i)]
+    (hα : Pairwise (Disjoint on (Set.range <| α ·))) :
+    IsOpenImmersion (Sigma.desc α) := by
+  rw [IsOpenImmersion.iff_isIso_stalkMap]
+  constructor
+  · suffices Topology.IsOpenEmbedding (Sigma.desc α ∘ sigmaMk f) by
+      convert this.comp (sigmaMk f).symm.isOpenEmbedding; ext; simp
+    refine .of_continuous_injective_isOpenMap ?_ ?_ ?_
+    · fun_prop
+    · rintro ⟨ix, x⟩ ⟨iy, y⟩ e
+      have : α ix x = α iy y := by
+        simpa [← Scheme.Hom.comp_apply] using e
+      obtain rfl : ix = iy := by
+        by_contra h
+        exact Set.disjoint_iff_forall_ne.mp (hα h) ⟨x, rfl⟩ ⟨y, this.symm⟩ rfl
+      rw [(α ix).isOpenEmbedding.injective this]
+    · rw [isOpenMap_sigma]
+      intro i
+      simpa [← Scheme.Hom.comp_apply] using (α i).isOpenEmbedding.isOpenMap
+  · intro x
+    have ⟨y, hy⟩ := (Scheme.IsLocallyDirected.openCover (Discrete.functor f)).covers x
+    rw [← hy]
+    refine IsIso.of_isIso_fac_right
+      (g := ((Scheme.IsLocallyDirected.openCover (Discrete.functor f)).f _).stalkMap y)
+      (h := (X.presheaf.stalkCongr (.of_eq ?_)).hom ≫ (α _).stalkMap _) ?_
+    · simp [← Scheme.Hom.comp_apply]
+    · simp [← Scheme.Hom.stalkMap_comp, Scheme.Hom.stalkMap_congr_hom _ _ (colimit.ι_desc _ _)]
+
+open scoped Function in
+lemma isOpenImmersion_sigmaDesc [Small.{u} σ]
+    {X : Scheme.{u}} (α : ∀ i, g i ⟶ X) [∀ i, IsOpenImmersion (α i)]
+    (hα : Pairwise (Disjoint on (Set.range <| α ·))) :
+    IsOpenImmersion (Sigma.desc α) := by
+  obtain ⟨ι, ⟨e⟩⟩ := Small.equiv_small (α := σ)
+  convert IsOpenImmersion.comp ((Sigma.reindex e.symm g).inv) (Sigma.desc fun i ↦ α _)
+  · refine Sigma.hom_ext _ _ fun i ↦ ?_
+    obtain ⟨i, rfl⟩ := e.symm.surjective i
+    simp
+  · apply isOpenImmersion_sigmaDesc_aux
+    intro i j hij
+    exact hα (fun h ↦ hij (e.symm.injective h))
+
+open scoped Function in
+/-- `S` is the disjoint union of `Xᵢ` if the `Xᵢ` are covering, pairwise disjoint open subschemes
+of `S`. -/
+lemma nonempty_isColimit_cofanMk_of [Small.{u} σ]
+    {X : σ → Scheme.{u}} {S : Scheme.{u}} (f : ∀ i, X i ⟶ S) [∀ i, IsOpenImmersion (f i)]
+    (hcov : ⨆ i, (f i).opensRange = ⊤) (hdisj : Pairwise (Disjoint on (f · |>.opensRange))) :
+    Nonempty (IsColimit <| Cofan.mk S f) := by
+  have : IsOpenImmersion (Sigma.desc f) := by
+    refine isOpenImmersion_sigmaDesc _ _ (fun i j hij ↦ ?_)
+    simpa [Function.onFun_apply, disjoint_iff, Opens.ext_iff] using hdisj hij
+  simp only [← Cofan.isColimit_iff_isIso_sigmaDesc (Cofan.mk S f), cofan_mk_inj, Cofan.mk_pt]
+  apply isIso_of_isOpenImmersion_of_opensRange_eq_top
+  rw [eq_top_iff]
+  intro x hx
+  have : x ∈ ⨆ i, (f i).opensRange := by rwa [hcov]
+  obtain ⟨i, y, rfl⟩ := by simpa only [Opens.iSup_mk, Opens.mem_mk, Set.mem_iUnion] using this
+  use Sigma.ι X i y
+  simp [← Scheme.Hom.comp_apply]
 
 variable (X Y : Scheme.{u})
 
@@ -325,10 +293,9 @@ instance : IsOpenImmersion (coprod.inr : Y ⟶ X ⨿ Y) := by
   rw [← ι_right_coprodIsoSigma_inv]; infer_instance
 
 lemma isCompl_range_inl_inr :
-    IsCompl (Set.range (coprod.inl : X ⟶ X ⨿ Y).base)
-      (Set.range (coprod.inr : Y ⟶ X ⨿ Y).base) :=
+    IsCompl (Set.range (coprod.inl : X ⟶ X ⨿ Y)) (Set.range (coprod.inr : Y ⟶ X ⨿ Y)) :=
   ((TopCat.binaryCofan_isColimit_iff _).mp
-    ⟨mapIsColimitOfPreservesOfIsColimit Scheme.forgetToTop _ _ (coprodIsCoprod X Y)⟩).2.2
+    ⟨mapIsColimitOfPreservesOfIsColimit Scheme.forgetToTop.{u} _ _ (coprodIsCoprod X Y)⟩).2.2
 
 lemma isCompl_opensRange_inl_inr :
     IsCompl (coprod.inl : X ⟶ X ⨿ Y).opensRange (coprod.inr : Y ⟶ X ⨿ Y).opensRange := by
@@ -344,46 +311,69 @@ def coprodMk : X ⊕ Y ≃ₜ (X ⨿ Y : Scheme.{u}) :=
 
 @[simp]
 lemma coprodMk_inl (x : X) :
-    coprodMk X Y (.inl x) = (coprod.inl : X ⟶ X ⨿ Y).base x := by
-  show ((TopCat.binaryCofan X Y).inl ≫
+    coprodMk X Y (.inl x) = (coprod.inl : X ⟶ X ⨿ Y) x := by
+  change ((TopCat.binaryCofan X Y).inl ≫
     (colimit.isoColimitCocone ⟨_, TopCat.binaryCofanIsColimit _ _⟩).inv ≫ _) x =
       Scheme.forgetToTop.map coprod.inl x
-  congr 1
+  congr 2
   refine (colimit.isoColimitCocone_ι_inv_assoc ⟨_, TopCat.binaryCofanIsColimit _ _⟩ _ _).trans ?_
   exact coprodComparison_inl Scheme.forgetToTop
 
 @[simp]
 lemma coprodMk_inr (x : Y) :
-    coprodMk X Y (.inr x) = (coprod.inr : Y ⟶ X ⨿ Y).base x := by
-  show ((TopCat.binaryCofan X Y).inr ≫
+    coprodMk X Y (.inr x) = (coprod.inr : Y ⟶ X ⨿ Y) x := by
+  change ((TopCat.binaryCofan X Y).inr ≫
     (colimit.isoColimitCocone ⟨_, TopCat.binaryCofanIsColimit _ _⟩).inv ≫ _) x =
       Scheme.forgetToTop.map coprod.inr x
-  congr 1
+  congr 2
   refine (colimit.isoColimitCocone_ι_inv_assoc ⟨_, TopCat.binaryCofanIsColimit _ _⟩ _ _).trans ?_
   exact coprodComparison_inr Scheme.forgetToTop
 
 /-- The open cover of the coproduct of two schemes. -/
 noncomputable
 def coprodOpenCover.{w} : (X ⨿ Y).OpenCover where
-  J := PUnit.{w + 1} ⊕ PUnit.{w + 1}
-  obj x := x.elim (fun _ ↦ X) (fun _ ↦ Y)
-  map x := x.rec (fun _ ↦ coprod.inl) (fun _ ↦ coprod.inr)
-  f x := ((coprodMk X Y).symm x).elim (fun _ ↦ Sum.inl .unit) (fun _ ↦ Sum.inr .unit)
-  covers x := by
+  I₀ := PUnit.{w + 1} ⊕ PUnit.{w + 1}
+  X x := x.elim (fun _ ↦ X) (fun _ ↦ Y)
+  f x := x.rec (fun _ ↦ coprod.inl) (fun _ ↦ coprod.inr)
+  mem₀ := by
+    rw [Scheme.presieve₀_mem_precoverage_iff]
+    refine ⟨fun x ↦ ?_, fun x ↦ x.rec (fun _ ↦ inferInstance) (fun _ ↦ inferInstance)⟩
+    use ((coprodMk X Y).symm x).elim (fun _ ↦ Sum.inl .unit) (fun _ ↦ Sum.inr .unit)
     obtain ⟨x, rfl⟩ := (coprodMk X Y).surjective x
     simp only [Sum.elim_inl, Sum.elim_inr, Set.mem_range]
     rw [Homeomorph.symm_apply_apply]
     obtain (x | x) := x
     · simp only [Sum.elim_inl, coprodMk_inl, exists_apply_eq_apply]
     · simp only [Sum.elim_inr, coprodMk_inr, exists_apply_eq_apply]
-  map_prop x := x.rec (fun _ ↦ inferInstance) (fun _ ↦ inferInstance)
+
+-- TODO: should infer_instance be considered normalising?
+set_option linter.flexible false in
+/-- If `X` and `Y` are open disjoint and covering open subschemes of `S`,
+`S` is the disjoint union of `X` and `Y`. -/
+lemma nonempty_isColimit_binaryCofanMk_of_isCompl {X Y S : Scheme.{u}}
+    (f : X ⟶ S) (g : Y ⟶ S) [IsOpenImmersion f] [IsOpenImmersion g]
+    (hf : IsCompl f.opensRange g.opensRange) :
+    Nonempty (IsColimit <| BinaryCofan.mk f g) := by
+  let c' : Cofan fun j ↦ (WalkingPair.casesOn j X Y : Scheme.{u}) :=
+    .mk S fun j ↦ WalkingPair.casesOn j f g
+  let i : BinaryCofan.mk f g ≅ c' := Cofan.ext (Iso.refl _) (by rintro (b|b) <;> rfl)
+  refine ⟨IsColimit.ofIsoColimit (Nonempty.some ?_) i.symm⟩
+  let fi (j : WalkingPair) : WalkingPair.casesOn j X Y ⟶ S := WalkingPair.casesOn j f g
+  convert nonempty_isColimit_cofanMk_of fi _ _
+  · intro i
+    cases i <;> (simp [fi]; infer_instance)
+  · simpa [← WalkingPair.equivBool.symm.iSup_comp, iSup_bool_eq, ← codisjoint_iff] using hf.2
+  · intro i j hij
+    match i, j with
+    | .left, .right => simpa [fi] using hf.1
+    | .right, .left => simpa [fi] using hf.1.symm
 
 variable (R S : Type u) [CommRing R] [CommRing S]
 
 /-- The map `Spec R ⨿ Spec S ⟶ Spec (R × S)`.
 This is an isomorphism as witnessed by an `IsIso` instance provided below. -/
 noncomputable
-def coprodSpec : Spec (.of R) ⨿ Spec (.of S) ⟶ Spec (.of (R × S)) :=
+def coprodSpec : Spec (.of R) ⨿ Spec (.of S) ⟶ Spec (.of <| R × S) :=
   coprod.desc (Spec.map (CommRingCat.ofHom <| RingHom.fst _ _))
     (Spec.map (CommRingCat.ofHom <| RingHom.snd _ _))
 
@@ -398,50 +388,49 @@ lemma coprodSpec_inr : coprod.inr ≫ coprodSpec R S =
   coprod.inr_desc _ _
 
 lemma coprodSpec_coprodMk (x) :
-    (coprodSpec R S).base (coprodMk _ _ x) = (PrimeSpectrum.primeSpectrumProd R S).symm x := by
+    coprodSpec R S (coprodMk _ _ x) = (PrimeSpectrum.primeSpectrumProd R S).symm x := by
   apply PrimeSpectrum.ext
   obtain (x | x) := x <;>
-    simp only [coprodMk_inl, coprodMk_inr, ← Scheme.comp_base_apply,
+    simp only [coprodMk_inl, coprodMk_inr, ← Scheme.Hom.comp_apply,
       coprodSpec, coprod.inl_desc, coprod.inr_desc]
-  · show Ideal.comap _ _ = x.asIdeal.prod ⊤
+  · change Ideal.comap _ _ = x.asIdeal.prod ⊤
     ext; simp [Ideal.prod, CommRingCat.ofHom]
-  · show Ideal.comap _ _ = Ideal.prod ⊤ x.asIdeal
+  · change Ideal.comap _ _ = Ideal.prod ⊤ x.asIdeal
     ext; simp [Ideal.prod, CommRingCat.ofHom]
 
 lemma coprodSpec_apply (x) :
-    (coprodSpec R S).base x = (PrimeSpectrum.primeSpectrumProd R S).symm
-      ((coprodMk (Spec (.of R)) (Spec (.of S))).symm x) := by
+    coprodSpec R S x = (PrimeSpectrum.primeSpectrumProd R S).symm ((coprodMk _ _).symm x) := by
   rw [← coprodSpec_coprodMk, Homeomorph.apply_symm_apply]
 
 lemma isIso_stalkMap_coprodSpec (x) :
     IsIso ((coprodSpec R S).stalkMap x) := by
   obtain ⟨x | x, rfl⟩ := (coprodMk _ _).surjective x
-  · have := Scheme.stalkMap_comp coprod.inl (coprodSpec R S) x
-    rw [← IsIso.comp_inv_eq, Scheme.stalkMap_congr_hom _ (Spec.map _) (coprodSpec_inl R S)] at this
+  · have := Scheme.Hom.stalkMap_comp coprod.inl (coprodSpec R S) x
+    rw [← IsIso.comp_inv_eq,
+      Scheme.Hom.stalkMap_congr_hom _ (Spec.map _) (coprodSpec_inl R S)] at this
     rw [coprodMk_inl, ← this]
     letI := (RingHom.fst R S).toAlgebra
-    have := IsLocalization.away_fst (R := R) (S := S)
     have : IsOpenImmersion (Spec.map (CommRingCat.ofHom (RingHom.fst R S))) :=
       IsOpenImmersion.of_isLocalization (1, 0)
     infer_instance
-  · have := Scheme.stalkMap_comp coprod.inr (coprodSpec R S) x
-    rw [← IsIso.comp_inv_eq, Scheme.stalkMap_congr_hom _ (Spec.map _) (coprodSpec_inr R S)] at this
+  · have := Scheme.Hom.stalkMap_comp coprod.inr (coprodSpec R S) x
+    rw [← IsIso.comp_inv_eq,
+      Scheme.Hom.stalkMap_congr_hom _ (Spec.map _) (coprodSpec_inr R S)] at this
     rw [coprodMk_inr, ← this]
     letI := (RingHom.snd R S).toAlgebra
-    have := IsLocalization.away_snd (R := R) (S := S)
     have : IsOpenImmersion (Spec.map (CommRingCat.ofHom (RingHom.snd R S))) :=
       IsOpenImmersion.of_isLocalization (0, 1)
     infer_instance
 
 instance : IsIso (coprodSpec R S) := by
-  rw [isIso_iff_stalk_iso]
+  rw [isIso_iff_isIso_stalkMap]
   refine ⟨?_, isIso_stalkMap_coprodSpec R S⟩
-  convert_to IsIso (TopCat.isoOfHomeo (X := Spec (.of (R × S))) <|
-    PrimeSpectrum.primeSpectrumProdHomeo.trans (coprodMk (Spec (.of R)) (Spec (.of S)))).inv
+  convert_to IsIso (TopCat.isoOfHomeo (X := Spec (.of <| R × S)) <|
+    PrimeSpectrum.primeSpectrumProdHomeo.trans (coprodMk (Spec <| .of R) (Spec <| .of S))).inv
   · ext x; exact coprodSpec_apply R S x
   · infer_instance
 
-instance (R S : CommRingCatᵒᵖ) : IsIso (coprodComparison Scheme.Spec R S) := by
+instance (R S : CommRingCat.{u}ᵒᵖ) : IsIso (coprodComparison Scheme.Spec R S) := by
   obtain ⟨R⟩ := R; obtain ⟨S⟩ := S
   have : coprodComparison Scheme.Spec (.op R) (.op S) ≫ (Spec.map
     ((limit.isoLimitCone ⟨_, CommRingCat.prodFanIsLimit R S⟩).inv ≫
@@ -458,55 +447,110 @@ instance (R S : CommRingCatᵒᵖ) : IsIso (coprodComparison Scheme.Spec R S) :=
   rw [(IsIso.eq_comp_inv _).mpr this]
   infer_instance
 
-noncomputable
-instance : PreservesColimitsOfShape (Discrete WalkingPair) Scheme.Spec :=
+instance : PreservesColimitsOfShape (Discrete WalkingPair) Scheme.Spec.{u} :=
   ⟨fun {_} ↦
-    have (X Y : CommRingCatᵒᵖ) := PreservesColimitPair.ofIsoCoprodComparison Scheme.Spec X Y
-    preservesColimitOfIsoDiagram _ (diagramIsoPair _).symm⟩
+    have (X Y : CommRingCat.{u}ᵒᵖ) := PreservesColimitPair.of_iso_coprod_comparison Scheme.Spec X Y
+    preservesColimit_of_iso_diagram _ (diagramIsoPair _).symm⟩
 
-noncomputable
-instance : PreservesColimitsOfShape (Discrete PEmpty.{1}) Scheme.Spec := by
+instance : PreservesColimitsOfShape (Discrete PEmpty.{1}) Scheme.Spec.{u} := by
   have : IsEmpty (Scheme.Spec.obj (⊥_ CommRingCatᵒᵖ)) :=
     @Function.isEmpty _ _ spec_punit_isEmpty (Scheme.Spec.mapIso
-      (initialIsoIsInitial (initialOpOfTerminal CommRingCat.punitIsTerminal))).hom.base
-  have := preservesInitialOfIso Scheme.Spec (asIso (initial.to _))
-  exact preservesColimitsOfShapePemptyOfPreservesInitial _
+      (initialIsoIsInitial (initialOpOfTerminal CommRingCat.punitIsTerminal))).hom
+  have := preservesInitial_of_iso Scheme.Spec (asIso (initial.to _))
+  exact preservesColimitsOfShape_pempty_of_preservesInitial _
 
-noncomputable
-instance {J} [Fintype J] : PreservesColimitsOfShape (Discrete J) Scheme.Spec :=
+instance {J : Type*} [Finite J] : PreservesColimitsOfShape (Discrete J) Scheme.Spec.{u} :=
   preservesFiniteCoproductsOfPreservesBinaryAndInitial _ _
-
-noncomputable
-instance {J : Type*} [Finite J] : PreservesColimitsOfShape (Discrete J) Scheme.Spec :=
-  letI := (nonempty_fintype J).some
-  preservesColimitsOfShapeOfEquiv (Discrete.equivalence (Fintype.equivFin _).symm) _
 
 /-- The canonical map `∐ Spec Rᵢ ⟶ Spec (Π Rᵢ)`.
 This is an isomorphism when the product is finite. -/
 noncomputable
-def sigmaSpec (R : ι → CommRingCat) : (∐ fun i ↦ Spec (R i)) ⟶ Spec (.of (Π i, R i)) :=
+def sigmaSpec (R : ι → CommRingCat) : (∐ fun i ↦ Spec (R i)) ⟶ Spec (.of <| Π i, R i) :=
   Sigma.desc (fun i ↦ Spec.map (CommRingCat.ofHom (Pi.evalRingHom _ i)))
 
-@[simp, reassoc]
+@[reassoc (attr := simp)]
 lemma ι_sigmaSpec (R : ι → CommRingCat) (i) :
     Sigma.ι _ i ≫ sigmaSpec R = Spec.map (CommRingCat.ofHom (Pi.evalRingHom _ i)) :=
   Sigma.ι_desc _ _
 
-instance [Finite ι] (R : ι → CommRingCat) : IsIso (sigmaSpec R) := by
+instance (i) (R : ι → Type _) [∀ i, CommRing (R i)] :
+    IsOpenImmersion (Spec.map (CommRingCat.ofHom (Pi.evalRingHom (R ·) i))) := by
+  classical
+  letI := (Pi.evalRingHom R i).toAlgebra
+  have : IsLocalization.Away (Function.update (β := R) 0 i 1) (R i) := by
+    apply IsLocalization.away_of_isIdempotentElem_of_mul
+    · ext j; by_cases h : j = i <;> aesop
+    · intro x y
+      constructor
+      · intro e; ext j; by_cases h : j = i <;> aesop
+      · intro e; simpa using congr_fun e i
+    · exact Function.surjective_eval _
+  exact IsOpenImmersion.of_isLocalization (Function.update 0 i 1)
+
+instance (R : ι → CommRingCat.{u}) : IsOpenImmersion (sigmaSpec R) := by
+  classical
+  apply isOpenImmersion_sigmaDesc
+  intro ix iy h
+  refine Set.disjoint_iff_forall_ne.mpr ?_
+  rintro _ ⟨x, rfl⟩ _ ⟨y, rfl⟩ e
+  have : DFinsupp.single (β := (R ·)) iy 1 iy ∈ y.asIdeal :=
+    (PrimeSpectrum.ext_iff.mp e).le (x := DFinsupp.single iy 1)
+      (show DFinsupp.single (β := (R ·)) iy 1 ix ∈ x.asIdeal by simp [h.symm])
+  simp [← Ideal.eq_top_iff_one, y.2.ne_top] at this
+
+instance [Finite ι] (R : ι → CommRingCat.{u}) : IsIso (sigmaSpec R) := by
   have : sigmaSpec R =
       (colimit.isoColimitCocone ⟨_,
         (IsColimit.precomposeHomEquiv Discrete.natIsoFunctor.symm _).symm (isColimitOfPreserves
           Scheme.Spec (Fan.IsLimit.op (CommRingCat.piFanIsLimit R)))⟩).hom := by
-    ext1; simp; rfl
+    ext1
+    simp; rfl
   rw [this]
   infer_instance
 
 instance [Finite ι] [∀ i, IsAffine (f i)] : IsAffine (∐ f) :=
-  isAffine_of_isIso ((Sigma.mapIso (fun i ↦ (f i).isoSpec)).hom ≫ sigmaSpec _)
+  .of_isIso ((Sigma.mapIso (fun i ↦ (f i).isoSpec)).hom ≫ sigmaSpec _)
 
 instance [IsAffine X] [IsAffine Y] : IsAffine (X ⨿ Y) :=
-  isAffine_of_isIso ((coprod.mapIso X.isoSpec Y.isoSpec).hom ≫ coprodSpec _ _)
+  .of_isIso ((coprod.mapIso X.isoSpec Y.isoSpec).hom ≫ coprodSpec _ _)
 
 end Coproduct
+
+instance {U X Y : Scheme} (f : U ⟶ X) (g : U ⟶ Y) [IsOpenImmersion f] [IsOpenImmersion g]
+    (i : WalkingPair) : Mono ((span f g ⋙ Scheme.forget).map (WidePushoutShape.Hom.init i)) := by
+  rw [mono_iff_injective]
+  cases i
+  · simpa using f.isOpenEmbedding.injective
+  · simpa using g.isOpenEmbedding.injective
+
+instance {U X Y : Scheme} (f : U ⟶ X) (g : U ⟶ Y) [IsOpenImmersion f] [IsOpenImmersion g]
+    {i j : WalkingSpan} (t : i ⟶ j) : IsOpenImmersion ((span f g).map t) := by
+  obtain (a | (a | a)) := t
+  · simp only [WidePushoutShape.hom_id, CategoryTheory.Functor.map_id]
+    infer_instance
+  · simpa
+  · simpa
+
+-- Test that instances on locally directed colimits fire correctly.
+example {U X Y : Scheme.{u}} (f : U ⟶ X) (g : U ⟶ Y)
+    [IsOpenImmersion f] [IsOpenImmersion g] : HasPushout f g :=
+  inferInstance
+
+instance : CartesianMonoidalCategory Scheme := .ofHasFiniteProducts
+instance : BraidedCategory Scheme := .ofCartesianMonoidalCategory
+
+section IsAffine
+
+lemma Scheme.isAffine_of_isLimit {I : Type*} [Category I] {D : I ⥤ Scheme.{u}}
+    (c : Cone D) (hc : IsLimit c) [∀ i, IsAffine (D.obj i)] :
+    IsAffine c.pt := by
+  let α : D ⟶ (D ⋙ Scheme.Γ.rightOp) ⋙ Scheme.Spec := D.whiskerLeft ΓSpec.adjunction.unit
+  have (i : _) : IsIso (α.app i) := IsAffine.affine
+  have : IsIso α := NatIso.isIso_of_isIso_app α
+  have : c.pt ≅ Spec Γ(c.pt, ⊤) := hc.conePointUniqueUpToIso ((IsLimit.postcomposeHomEquiv
+    (asIso α).symm _).symm (isLimitOfPreserves (Scheme.Γ.rightOp ⋙ Scheme.Spec) hc))
+  exact .of_isIso this.hom
+
+end IsAffine
 
 end AlgebraicGeometry

@@ -3,12 +3,14 @@ Copyright (c) 2022 Eric Wieser. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Eric Wieser
 -/
-import Mathlib.Analysis.Normed.Algebra.Exponential
-import Mathlib.Analysis.Matrix
-import Mathlib.LinearAlgebra.Matrix.ZPow
-import Mathlib.LinearAlgebra.Matrix.Hermitian
-import Mathlib.LinearAlgebra.Matrix.Symmetric
-import Mathlib.Topology.UniformSpace.Matrix
+module
+
+public import Mathlib.Analysis.Normed.Algebra.Exponential
+public import Mathlib.Analysis.Matrix.Normed
+public import Mathlib.LinearAlgebra.Matrix.ZPow
+public import Mathlib.LinearAlgebra.Matrix.Hermitian
+public import Mathlib.LinearAlgebra.Matrix.Symmetric
+public import Mathlib.Topology.UniformSpace.Matrix
 
 /-!
 # Lemmas about the matrix exponential
@@ -59,6 +61,7 @@ results for general rings are instead stated about `Ring.inverse`:
 * https://en.wikipedia.org/wiki/Matrix_exponential
 -/
 
+@[expose] public section
 
 open scoped Matrix
 
@@ -73,7 +76,7 @@ section Topological
 section Ring
 
 variable [Fintype m] [DecidableEq m] [Fintype n] [DecidableEq n] [∀ i, Fintype (n' i)]
-  [∀ i, DecidableEq (n' i)] [Field 𝕂] [Ring 𝔸] [TopologicalSpace 𝔸] [TopologicalRing 𝔸]
+  [∀ i, DecidableEq (n' i)] [Field 𝕂] [Ring 𝔸] [TopologicalSpace 𝔸] [IsTopologicalRing 𝔸]
   [Algebra 𝕂 𝔸] [T2Space 𝔸]
 
 theorem exp_diagonal (v : m → 𝔸) : exp 𝕂 (diagonal v) = diagonal (exp 𝕂 v) := by
@@ -99,8 +102,8 @@ end Ring
 
 section CommRing
 
-variable [Fintype m] [DecidableEq m] [Field 𝕂] [CommRing 𝔸] [TopologicalSpace 𝔸] [TopologicalRing 𝔸]
-  [Algebra 𝕂 𝔸] [T2Space 𝔸]
+variable [Fintype m] [DecidableEq m] [Field 𝕂] [CommRing 𝔸] [TopologicalSpace 𝔸]
+  [IsTopologicalRing 𝔸] [Algebra 𝕂 𝔸] [T2Space 𝔸]
 
 theorem exp_transpose (A : Matrix m m 𝔸) : exp 𝕂 Aᵀ = (exp 𝕂 A)ᵀ := by
   simp_rw [exp_eq_tsum, transpose_tsum, transpose_smul, transpose_pow]
@@ -118,40 +121,36 @@ variable [RCLike 𝕂] [Fintype m] [DecidableEq m]
   [NormedRing 𝔸] [NormedAlgebra 𝕂 𝔸] [CompleteSpace 𝔸]
 
 nonrec theorem exp_add_of_commute (A B : Matrix m m 𝔸) (h : Commute A B) :
-    exp 𝕂 (A + B) = exp 𝕂 A * exp 𝕂 B := by
-  letI : SeminormedRing (Matrix m m 𝔸) := Matrix.linftyOpSemiNormedRing
-  letI : NormedRing (Matrix m m 𝔸) := Matrix.linftyOpNormedRing
-  letI : NormedAlgebra 𝕂 (Matrix m m 𝔸) := Matrix.linftyOpNormedAlgebra
-  exact exp_add_of_commute h
+    exp 𝕂 (A + B) = exp 𝕂 A * exp 𝕂 B :=
+  open scoped Norms.Operator in exp_add_of_commute h
 
+open scoped Function in -- required for scoped `on` notation
 nonrec theorem exp_sum_of_commute {ι} (s : Finset ι) (f : ι → Matrix m m 𝔸)
-    (h : (s : Set ι).Pairwise fun i j => Commute (f i) (f j)) :
+    (h : (s : Set ι).Pairwise (Commute on f)) :
     exp 𝕂 (∑ i ∈ s, f i) =
-      s.noncommProd (fun i => exp 𝕂 (f i)) fun _ hi _ hj _ => (h.of_refl hi hj).exp 𝕂 := by
-  letI : SeminormedRing (Matrix m m 𝔸) := Matrix.linftyOpSemiNormedRing
-  letI : NormedRing (Matrix m m 𝔸) := Matrix.linftyOpNormedRing
-  letI : NormedAlgebra 𝕂 (Matrix m m 𝔸) := Matrix.linftyOpNormedAlgebra
-  exact exp_sum_of_commute s f h
+      s.noncommProd (fun i => exp 𝕂 (f i)) fun _ hi _ hj _ => (h.of_refl hi hj).exp 𝕂 :=
+  open scoped Norms.Operator in exp_sum_of_commute s f h
 
-nonrec theorem exp_nsmul (n : ℕ) (A : Matrix m m 𝔸) : exp 𝕂 (n • A) = exp 𝕂 A ^ n := by
-  letI : SeminormedRing (Matrix m m 𝔸) := Matrix.linftyOpSemiNormedRing
-  letI : NormedRing (Matrix m m 𝔸) := Matrix.linftyOpNormedRing
-  letI : NormedAlgebra 𝕂 (Matrix m m 𝔸) := Matrix.linftyOpNormedAlgebra
-  exact exp_nsmul n A
+nonrec theorem exp_nsmul (n : ℕ) (A : Matrix m m 𝔸) : exp 𝕂 (n • A) = exp 𝕂 A ^ n :=
+  open scoped Norms.Operator in exp_nsmul n A
 
-nonrec theorem isUnit_exp (A : Matrix m m 𝔸) : IsUnit (exp 𝕂 A) := by
-  letI : SeminormedRing (Matrix m m 𝔸) := Matrix.linftyOpSemiNormedRing
-  letI : NormedRing (Matrix m m 𝔸) := Matrix.linftyOpNormedRing
-  letI : NormedAlgebra 𝕂 (Matrix m m 𝔸) := Matrix.linftyOpNormedAlgebra
-  exact isUnit_exp _ A
+nonrec theorem isUnit_exp (A : Matrix m m 𝔸) : IsUnit (exp 𝕂 A) :=
+  open scoped Norms.Operator in isUnit_exp _ A
 
+-- TODO: without disabling this instance we get a timeout, see lean4#10414:
+-- https://github.com/leanprover/lean4/issues/10414
+-- and zulip discussion at
+-- https://leanprover.zulipchat.com/#narrow/channel/287929-mathlib4/topic/Coercion.20instance.20problems.20with.20matrix.20exponential/with/539770030
+attribute [-instance] Matrix.SpecialLinearGroup.hasCoeToGeneralLinearGroup in
 nonrec theorem exp_units_conj (U : (Matrix m m 𝔸)ˣ) (A : Matrix m m 𝔸) :
-    exp 𝕂 (U * A * U⁻¹) = U * exp 𝕂 A * U⁻¹ := by
-  letI : SeminormedRing (Matrix m m 𝔸) := Matrix.linftyOpSemiNormedRing
-  letI : NormedRing (Matrix m m 𝔸) := Matrix.linftyOpNormedRing
-  letI : NormedAlgebra 𝕂 (Matrix m m 𝔸) := Matrix.linftyOpNormedAlgebra
-  exact exp_units_conj _ U A
+    exp 𝕂 (U * A * U⁻¹) = U * exp 𝕂 A * U⁻¹ :=
+  open scoped Norms.Operator in exp_units_conj _ U A
 
+-- TODO: without disabling this instance we get a timeout, see lean4#10414:
+-- https://github.com/leanprover/lean4/issues/10414
+-- and zulip discussion at
+-- https://leanprover.zulipchat.com/#narrow/channel/287929-mathlib4/topic/Coercion.20instance.20problems.20with.20matrix.20exponential/with/539770030
+attribute [-instance] Matrix.SpecialLinearGroup.hasCoeToGeneralLinearGroup in
 theorem exp_units_conj' (U : (Matrix m m 𝔸)ˣ) (A : Matrix m m 𝔸) :
     exp 𝕂 (U⁻¹ * A * U) = U⁻¹ * exp 𝕂 A * U :=
   exp_units_conj 𝕂 U⁻¹ A
@@ -164,11 +163,8 @@ variable [RCLike 𝕂] [Fintype m] [DecidableEq m]
   [NormedCommRing 𝔸] [NormedAlgebra 𝕂 𝔸] [CompleteSpace 𝔸]
 
 theorem exp_neg (A : Matrix m m 𝔸) : exp 𝕂 (-A) = (exp 𝕂 A)⁻¹ := by
-  rw [nonsing_inv_eq_ring_inverse]
-  letI : SeminormedRing (Matrix m m 𝔸) := Matrix.linftyOpSemiNormedRing
-  letI : NormedRing (Matrix m m 𝔸) := Matrix.linftyOpNormedRing
-  letI : NormedAlgebra 𝕂 (Matrix m m 𝔸) := Matrix.linftyOpNormedAlgebra
-  exact (Ring.inverse_exp _ A).symm
+  rw [nonsing_inv_eq_ringInverse]
+  open scoped Norms.Operator in exact (Ring.inverse_exp _ A).symm
 
 theorem exp_zsmul (z : ℤ) (A : Matrix m m 𝔸) : exp 𝕂 (z • A) = exp 𝕂 A ^ z := by
   obtain ⟨n, rfl | rfl⟩ := z.eq_nat_or_neg

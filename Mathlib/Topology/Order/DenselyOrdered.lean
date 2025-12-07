@@ -3,11 +3,15 @@ Copyright (c) 2017 Johannes Hölzl. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Johannes Hölzl, Mario Carneiro, Yury Kudryashov
 -/
-import Mathlib.Topology.Order.IsLUB
+module
+
+public import Mathlib.Topology.Order.IsLUB
 
 /-!
 # Order topology on a densely ordered set
 -/
+
+@[expose] public section
 
 open Set Filter TopologicalSpace Topology Function
 
@@ -48,7 +52,7 @@ theorem closure_Iio (a : α) [NoMinOrder α] : closure (Iio a) = Iic a :=
 theorem closure_Ioo {a b : α} (hab : a ≠ b) : closure (Ioo a b) = Icc a b := by
   apply Subset.antisymm
   · exact closure_minimal Ioo_subset_Icc_self isClosed_Icc
-  · cases' hab.lt_or_lt with hab hab
+  · rcases hab.lt_or_gt with hab | hab
     · rw [← diff_subset_closure_iff, Icc_diff_Ioo_same hab.le]
       have hab' : (Ioo a b).Nonempty := nonempty_Ioo.2 hab
       simp only [insert_subset_iff, singleton_subset_iff]
@@ -128,7 +132,8 @@ theorem Ioc_subset_closure_interior (a b : α) : Ioc a b ⊆ closure (interior (
         closure_mono (interior_maximal Ioo_subset_Ioc_self isOpen_Ioo)
 
 theorem Ico_subset_closure_interior (a b : α) : Ico a b ⊆ closure (interior (Ico a b)) := by
-  simpa only [dual_Ioc] using Ioc_subset_closure_interior (OrderDual.toDual b) (OrderDual.toDual a)
+  simpa only [Ioc_toDual] using
+    Ioc_subset_closure_interior (OrderDual.toDual b) (OrderDual.toDual a)
 
 @[simp]
 theorem frontier_Ici' {a : α} (ha : (Iio a).Nonempty) : frontier (Ici a) = {a} := by
@@ -146,14 +151,14 @@ theorem frontier_Iic [NoMaxOrder α] {a : α} : frontier (Iic a) = {a} :=
 
 @[simp]
 theorem frontier_Ioi' {a : α} (ha : (Ioi a).Nonempty) : frontier (Ioi a) = {a} := by
-  simp [frontier, closure_Ioi' ha, Iic_diff_Iio, Icc_self]
+  simp [frontier, closure_Ioi' ha]
 
 theorem frontier_Ioi [NoMaxOrder α] {a : α} : frontier (Ioi a) = {a} :=
   frontier_Ioi' nonempty_Ioi
 
 @[simp]
 theorem frontier_Iio' {a : α} (ha : (Iio a).Nonempty) : frontier (Iio a) = {a} := by
-  simp [frontier, closure_Iio' ha, Iic_diff_Iio, Icc_self]
+  simp [frontier, closure_Iio' ha]
 
 theorem frontier_Iio [NoMinOrder α] {a : α} : frontier (Iio a) = {a} :=
   frontier_Iio' nonempty_Iio
@@ -181,11 +186,10 @@ theorem nhdsWithin_Ioi_neBot' {a b : α} (H₁ : (Ioi a).Nonempty) (H₂ : a ≤
 theorem nhdsWithin_Ioi_neBot [NoMaxOrder α] {a b : α} (H : a ≤ b) : NeBot (𝓝[Ioi a] b) :=
   nhdsWithin_Ioi_neBot' nonempty_Ioi H
 
-theorem nhdsWithin_Ioi_self_neBot' {a : α} (H : (Ioi a).Nonempty) : NeBot (𝓝[>] a) :=
+theorem nhdsGT_neBot_of_exists_gt {a : α} (H : ∃ b, a < b) : NeBot (𝓝[>] a) :=
   nhdsWithin_Ioi_neBot' H (le_refl a)
 
-instance nhdsWithin_Ioi_self_neBot [NoMaxOrder α] (a : α) : NeBot (𝓝[>] a) :=
-  nhdsWithin_Ioi_neBot (le_refl a)
+instance nhdsGT_neBot [NoMaxOrder α] (a : α) : NeBot (𝓝[>] a) := nhdsWithin_Ioi_neBot le_rfl
 
 theorem nhdsWithin_Iio_neBot' {b c : α} (H₁ : (Iio c).Nonempty) (H₂ : b ≤ c) :
     NeBot (𝓝[Iio c] b) :=
@@ -197,8 +201,7 @@ theorem nhdsWithin_Iio_neBot [NoMinOrder α] {a b : α} (H : a ≤ b) : NeBot (�
 theorem nhdsWithin_Iio_self_neBot' {b : α} (H : (Iio b).Nonempty) : NeBot (𝓝[<] b) :=
   nhdsWithin_Iio_neBot' H (le_refl b)
 
-instance nhdsWithin_Iio_self_neBot [NoMinOrder α] (a : α) : NeBot (𝓝[<] a) :=
-  nhdsWithin_Iio_neBot (le_refl a)
+instance nhdsLT_neBot [NoMinOrder α] (a : α) : NeBot (𝓝[<] a) := nhdsWithin_Iio_neBot (le_refl a)
 
 theorem right_nhdsWithin_Ico_neBot {a b : α} (H : a < b) : NeBot (𝓝[Ico a b] b) :=
   (isLUB_Ico H).nhdsWithin_neBot (nonempty_Ico.2 H)
@@ -212,62 +215,60 @@ theorem left_nhdsWithin_Ioo_neBot {a b : α} (H : a < b) : NeBot (𝓝[Ioo a b] 
 theorem right_nhdsWithin_Ioo_neBot {a b : α} (H : a < b) : NeBot (𝓝[Ioo a b] b) :=
   (isLUB_Ioo H).nhdsWithin_neBot (nonempty_Ioo.2 H)
 
-theorem comap_coe_nhdsWithin_Iio_of_Ioo_subset (hb : s ⊆ Iio b)
-    (hs : s.Nonempty → ∃ a < b, Ioo a b ⊆ s) : comap ((↑) : s → α) (𝓝[<] b) = atTop := by
+theorem comap_coe_nhdsLT_of_Ioo_subset (hb : s ⊆ Iio b) (hs : s.Nonempty → ∃ a < b, Ioo a b ⊆ s) :
+    comap ((↑) : s → α) (𝓝[<] b) = atTop := by
   nontriviality
   haveI : Nonempty s := nontrivial_iff_nonempty.1 ‹_›
   rcases hs (nonempty_subtype.1 ‹_›) with ⟨a, h, hs⟩
   ext u; constructor
   · rintro ⟨t, ht, hts⟩
     obtain ⟨x, ⟨hxa : a ≤ x, hxb : x < b⟩, hxt : Ioo x b ⊆ t⟩ :=
-      (mem_nhdsWithin_Iio_iff_exists_mem_Ico_Ioo_subset h).mp ht
+      (mem_nhdsLT_iff_exists_mem_Ico_Ioo_subset h).mp ht
     obtain ⟨y, hxy, hyb⟩ := exists_between hxb
     refine mem_of_superset (mem_atTop ⟨y, hs ⟨hxa.trans_lt hxy, hyb⟩⟩) ?_
     rintro ⟨z, hzs⟩ (hyz : y ≤ z)
     exact hts (hxt ⟨hxy.trans_le hyz, hb hzs⟩)
   · intro hu
     obtain ⟨x : s, hx : ∀ z, x ≤ z → z ∈ u⟩ := mem_atTop_sets.1 hu
-    exact ⟨Ioo x b, Ioo_mem_nhdsWithin_Iio' (hb x.2), fun z hz => hx _ hz.1.le⟩
+    exact ⟨Ioo x b, Ioo_mem_nhdsLT (hb x.2), fun z hz => hx _ hz.1.le⟩
 
-set_option backward.isDefEq.lazyWhnfCore false in -- See https://github.com/leanprover-community/mathlib4/issues/12534
-theorem comap_coe_nhdsWithin_Ioi_of_Ioo_subset (ha : s ⊆ Ioi a)
-    (hs : s.Nonempty → ∃ b > a, Ioo a b ⊆ s) : comap ((↑) : s → α) (𝓝[>] a) = atBot :=
-  comap_coe_nhdsWithin_Iio_of_Ioo_subset (show ofDual ⁻¹' s ⊆ Iio (toDual a) from ha) fun h => by
-    simpa only [OrderDual.exists, dual_Ioo] using hs h
+theorem comap_coe_nhdsGT_of_Ioo_subset (ha : s ⊆ Ioi a) (hs : s.Nonempty → ∃ b > a, Ioo a b ⊆ s) :
+    comap ((↑) : s → α) (𝓝[>] a) = atBot := by
+  apply comap_coe_nhdsLT_of_Ioo_subset (show ofDual ⁻¹' s ⊆ Iio (toDual a) from ha)
+  simp only [OrderDual.exists, Ioo_toDual]
+  exact hs
 
 theorem map_coe_atTop_of_Ioo_subset (hb : s ⊆ Iio b) (hs : ∀ a' < b, ∃ a < b, Ioo a b ⊆ s) :
     map ((↑) : s → α) atTop = 𝓝[<] b := by
   rcases eq_empty_or_nonempty (Iio b) with (hb' | ⟨a, ha⟩)
   · have : IsEmpty s := ⟨fun x => hb'.subset (hb x.2)⟩
     rw [filter_eq_bot_of_isEmpty atTop, Filter.map_bot, hb', nhdsWithin_empty]
-  · rw [← comap_coe_nhdsWithin_Iio_of_Ioo_subset hb fun _ => hs a ha, map_comap_of_mem]
+  · rw [← comap_coe_nhdsLT_of_Ioo_subset hb fun _ => hs a ha, map_comap_of_mem]
     rw [Subtype.range_val]
-    exact (mem_nhdsWithin_Iio_iff_exists_Ioo_subset' ha).2 (hs a ha)
+    exact (mem_nhdsLT_iff_exists_Ioo_subset' ha).2 (hs a ha)
 
 theorem map_coe_atBot_of_Ioo_subset (ha : s ⊆ Ioi a) (hs : ∀ b' > a, ∃ b > a, Ioo a b ⊆ s) :
     map ((↑) : s → α) atBot = 𝓝[>] a := by
-  -- the elaborator gets stuck without `(... : _)`
+  -- the elaborator gets stuck without `(... :)`
   refine (map_coe_atTop_of_Ioo_subset (show ofDual ⁻¹' s ⊆ Iio (toDual a) from ha)
-    fun b' hb' => ?_ : _)
-  simpa only [OrderDual.exists, dual_Ioo] using hs b' hb'
+    fun b' hb' => ?_ :)
+  simpa using hs b' hb'
 
 /-- The `atTop` filter for an open interval `Ioo a b` comes from the left-neighbourhoods filter at
 the right endpoint in the ambient order. -/
-theorem comap_coe_Ioo_nhdsWithin_Iio (a b : α) : comap ((↑) : Ioo a b → α) (𝓝[<] b) = atTop :=
-  comap_coe_nhdsWithin_Iio_of_Ioo_subset Ioo_subset_Iio_self fun h =>
-    ⟨a, nonempty_Ioo.1 h, Subset.refl _⟩
+theorem comap_coe_Ioo_nhdsLT (a b : α) : comap ((↑) : Ioo a b → α) (𝓝[<] b) = atTop :=
+  comap_coe_nhdsLT_of_Ioo_subset Ioo_subset_Iio_self fun h => ⟨a, nonempty_Ioo.1 h, Subset.refl _⟩
 
 /-- The `atBot` filter for an open interval `Ioo a b` comes from the right-neighbourhoods filter at
 the left endpoint in the ambient order. -/
-theorem comap_coe_Ioo_nhdsWithin_Ioi (a b : α) : comap ((↑) : Ioo a b → α) (𝓝[>] a) = atBot :=
-  comap_coe_nhdsWithin_Ioi_of_Ioo_subset Ioo_subset_Ioi_self fun h =>
-    ⟨b, nonempty_Ioo.1 h, Subset.refl _⟩
+theorem comap_coe_Ioo_nhdsGT (a b : α) : comap ((↑) : Ioo a b → α) (𝓝[>] a) = atBot :=
+  comap_coe_nhdsGT_of_Ioo_subset Ioo_subset_Ioi_self fun h => ⟨b, nonempty_Ioo.1 h, Subset.refl _⟩
 
-theorem comap_coe_Ioi_nhdsWithin_Ioi (a : α) : comap ((↑) : Ioi a → α) (𝓝[>] a) = atBot :=
-  comap_coe_nhdsWithin_Ioi_of_Ioo_subset (Subset.refl _) fun ⟨x, hx⟩ => ⟨x, hx, Ioo_subset_Ioi_self⟩
+theorem comap_coe_Ioi_nhdsGT (a : α) : comap ((↑) : Ioi a → α) (𝓝[>] a) = atBot :=
+  comap_coe_nhdsGT_of_Ioo_subset (Subset.refl _) fun ⟨x, hx⟩ => ⟨x, hx, Ioo_subset_Ioi_self⟩
 
-theorem comap_coe_Iio_nhdsWithin_Iio (a : α) : comap ((↑) : Iio a → α) (𝓝[<] a) = atTop :=
-  comap_coe_Ioi_nhdsWithin_Ioi (α := αᵒᵈ) a
+theorem comap_coe_Iio_nhdsLT (a : α) : comap ((↑) : Iio a → α) (𝓝[<] a) = atTop :=
+  comap_coe_Ioi_nhdsGT (α := αᵒᵈ) a
 
 @[simp]
 theorem map_coe_Ioo_atTop {a b : α} (h : a < b) : map ((↑) : Ioo a b → α) atTop = 𝓝[<] b :=
@@ -310,22 +311,22 @@ theorem tendsto_comp_coe_Iio_atTop :
 @[simp]
 theorem tendsto_Ioo_atTop {f : β → Ioo a b} :
     Tendsto f l atTop ↔ Tendsto (fun x => (f x : α)) l (𝓝[<] b) := by
-  rw [← comap_coe_Ioo_nhdsWithin_Iio, tendsto_comap_iff]; rfl
+  rw [← comap_coe_Ioo_nhdsLT, tendsto_comap_iff]; rfl
 
 @[simp]
 theorem tendsto_Ioo_atBot {f : β → Ioo a b} :
     Tendsto f l atBot ↔ Tendsto (fun x => (f x : α)) l (𝓝[>] a) := by
-  rw [← comap_coe_Ioo_nhdsWithin_Ioi, tendsto_comap_iff]; rfl
+  rw [← comap_coe_Ioo_nhdsGT, tendsto_comap_iff]; rfl
 
 @[simp]
 theorem tendsto_Ioi_atBot {f : β → Ioi a} :
     Tendsto f l atBot ↔ Tendsto (fun x => (f x : α)) l (𝓝[>] a) := by
-  rw [← comap_coe_Ioi_nhdsWithin_Ioi, tendsto_comap_iff]; rfl
+  rw [← comap_coe_Ioi_nhdsGT, tendsto_comap_iff]; rfl
 
 @[simp]
 theorem tendsto_Iio_atTop {f : β → Iio a} :
     Tendsto f l atTop ↔ Tendsto (fun x => (f x : α)) l (𝓝[<] a) := by
-  rw [← comap_coe_Iio_nhdsWithin_Iio, tendsto_comap_iff]; rfl
+  rw [← comap_coe_Iio_nhdsLT, tendsto_comap_iff]; rfl
 
 instance (x : α) [Nontrivial α] : NeBot (𝓝[≠] x) := by
   refine forall_mem_nonempty_iff_neBot.1 fun s hs => ?_
@@ -336,6 +337,21 @@ instance (x : α) [Nontrivial α] : NeBot (𝓝[≠] x) := by
   · exact ⟨y, us ⟨hab hy, xy.symm⟩⟩
   obtain ⟨z, hz⟩ : ∃ z, a < z ∧ z < x := exists_between hy.1
   exact ⟨z, us ⟨hab ⟨hz.1, hz.2.trans hy.2⟩, hz.2.ne⟩⟩
+
+/-- If the order topology for a dense linear ordering is discrete, the space has at most one point.
+
+We would prefer for this to be an instance but even at `(priority := 100)` this was problematic so
+we have deferred this issue. TODO Promote this to an `instance`! -/
+lemma DenselyOrdered.subsingleton_of_discreteTopology [DiscreteTopology α] : Subsingleton α := by
+  suffices ∀ a b : α, b ≤ a from ⟨fun a b ↦ le_antisymm (this b a) (this a b)⟩
+  intro a b
+  by_contra! contra
+  suffices b ∈ Ioo a b by
+    #adaptation_note /-- 2025-10-25 https://github.com/leanprover/lean4/issues/10953
+      Used to be `grind`. -/
+    simp_all
+  rw [← (isClosed_discrete (Ioo a b)).closure_eq, closure_Ioo contra.ne]
+  grind
 
 /-- Let `s` be a dense set in a nontrivial dense linear order `α`. If `s` is a
 separable space (e.g., if `α` has a second countable topology), then there exists a countable
@@ -351,8 +367,7 @@ theorem Dense.exists_countable_dense_subset_no_bot_top [Nontrivial α] {s : Set 
   · simp [hx]
   · simp [hx]
 
-variable (α)
-
+variable (α) in
 /-- If `α` is a nontrivial separable dense linear order, then there exists a
 countable dense set `s : Set α` that contains neither top nor bottom elements of `α`.
 For a dense set containing both bot and top elements, see
@@ -360,5 +375,29 @@ For a dense set containing both bot and top elements, see
 theorem exists_countable_dense_no_bot_top [SeparableSpace α] [Nontrivial α] :
     ∃ s : Set α, s.Countable ∧ Dense s ∧ (∀ x, IsBot x → x ∉ s) ∧ ∀ x, IsTop x → x ∉ s := by
   simpa using dense_univ.exists_countable_dense_subset_no_bot_top
+
+/-- `Set.Ico a b` is only closed if it is empty. -/
+@[simp]
+theorem isClosed_Ico_iff {a b : α} : IsClosed (Set.Ico a b) ↔ b ≤ a := by
+  refine ⟨fun h => le_of_not_gt fun hab => ?_, by simp_all⟩
+  have := h.closure_eq
+  rw [closure_Ico hab.ne, Icc_eq_Ico_same_iff] at this
+  exact this hab.le
+
+/-- `Set.Ioc a b` is only closed if it is empty. -/
+@[simp]
+theorem isClosed_Ioc_iff {a b : α} : IsClosed (Set.Ioc a b) ↔ b ≤ a := by
+  refine ⟨fun h => le_of_not_gt fun hab => ?_, by simp_all⟩
+  have := h.closure_eq
+  rw [closure_Ioc hab.ne, Icc_eq_Ioc_same_iff] at this
+  exact this hab.le
+
+/-- `Set.Ioo a b` is only closed if it is empty. -/
+@[simp]
+theorem isClosed_Ioo_iff {a b : α} : IsClosed (Set.Ioo a b) ↔ b ≤ a := by
+  refine ⟨fun h => le_of_not_gt fun hab => ?_, by simp_all⟩
+  have := h.closure_eq
+  rw [closure_Ioo hab.ne, Icc_eq_Ioo_same_iff] at this
+  exact this hab.le
 
 end DenselyOrdered

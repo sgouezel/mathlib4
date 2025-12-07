@@ -3,8 +3,10 @@ Copyright (c) 2019 Jeremy Avigad. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jeremy Avigad, Sébastien Gouëzel, Yury Kudryashov
 -/
-import Mathlib.Analysis.Calculus.FDeriv.Basic
-import Mathlib.Analysis.Normed.Operator.BoundedLinearMaps
+module
+
+public import Mathlib.Analysis.Calculus.FDeriv.Basic
+public import Mathlib.Analysis.Normed.Operator.BoundedLinearMaps
 
 /-!
 # The derivative of bounded linear maps
@@ -15,6 +17,8 @@ see the module docstring of `Analysis/Calculus/FDeriv/Basic.lean`.
 This file contains the usual formulas (and existence assertions) for the derivative of
 bounded linear maps.
 -/
+
+@[expose] public section
 
 
 open Asymptotics
@@ -42,10 +46,12 @@ predicate `IsBoundedLinearMap`). We give statements for both versions. -/
 
 @[fun_prop]
 protected theorem ContinuousLinearMap.hasStrictFDerivAt {x : E} : HasStrictFDerivAt e e x :=
-  (isLittleO_zero _ _).congr_left fun x => by simp only [e.map_sub, sub_self]
+  .of_isLittleOTVS <| (IsLittleOTVS.zero _ _).congr_left fun x => by
+    simp only [e.map_sub, sub_self, Pi.zero_apply]
 
 protected theorem ContinuousLinearMap.hasFDerivAtFilter : HasFDerivAtFilter e e x L :=
-  .of_isLittleO <| (isLittleO_zero _ _).congr_left fun x => by simp only [e.map_sub, sub_self]
+  .of_isLittleOTVS <| (IsLittleOTVS.zero _ _).congr_left fun x => by
+    simp only [e.map_sub, sub_self, Pi.zero_apply]
 
 @[fun_prop]
 protected theorem ContinuousLinearMap.hasFDerivWithinAt : HasFDerivWithinAt e e s x :=

@@ -3,15 +3,17 @@ Copyright (c) 2022 Jireh Loreaux. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jireh Loreaux
 -/
-import Mathlib.Analysis.CStarAlgebra.Spectrum
-import Mathlib.Analysis.CStarAlgebra.ContinuousMap
-import Mathlib.Analysis.Normed.Group.Quotient
-import Mathlib.Analysis.Normed.Algebra.Basic
-import Mathlib.Topology.ContinuousMap.Units
-import Mathlib.Topology.ContinuousMap.Compact
-import Mathlib.Topology.Algebra.Algebra
-import Mathlib.Topology.ContinuousMap.Ideals
-import Mathlib.Topology.ContinuousMap.StoneWeierstrass
+module
+
+public import Mathlib.Analysis.CStarAlgebra.Spectrum
+public import Mathlib.Analysis.CStarAlgebra.ContinuousMap
+public import Mathlib.Analysis.Normed.Group.Quotient
+public import Mathlib.Analysis.Normed.Algebra.Basic
+public import Mathlib.Topology.ContinuousMap.Units
+public import Mathlib.Topology.ContinuousMap.Compact
+public import Mathlib.Topology.Algebra.Algebra
+public import Mathlib.Topology.ContinuousMap.Ideals
+public import Mathlib.Topology.ContinuousMap.StoneWeierstrass
 
 /-!
 # Gelfand Duality
@@ -60,6 +62,8 @@ Then `η₁ : id → F ∘ G := gelfandStarTransform` and
 
 Gelfand transform, character space, C⋆-algebra
 -/
+
+@[expose] public section
 
 
 open WeakDual
@@ -212,15 +216,12 @@ noncomputable def compContinuousMap (ψ : A →⋆ₐ[𝕜] B) :
     Continuous.subtype_mk
       (continuous_of_continuous_eval fun a => map_continuous <| gelfandTransform 𝕜 B (ψ a)) _
 
-variable (A)
-
+variable (A) in
 /-- `WeakDual.CharacterSpace.compContinuousMap` sends the identity to the identity. -/
 @[simp]
 theorem compContinuousMap_id :
     compContinuousMap (StarAlgHom.id 𝕜 A) = ContinuousMap.id (characterSpace 𝕜 A) :=
   ContinuousMap.ext fun _a => ext fun _x => rfl
-
-variable {A}
 
 /-- `WeakDual.CharacterSpace.compContinuousMap` is functorial. -/
 @[simp]

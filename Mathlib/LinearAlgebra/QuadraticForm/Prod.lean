@@ -3,7 +3,9 @@ Copyright (c) 2021 Eric Wieser. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Eric Wieser
 -/
-import Mathlib.LinearAlgebra.QuadraticForm.IsometryEquiv
+module
+
+public import Mathlib.LinearAlgebra.QuadraticForm.IsometryEquiv
 
 /-! # Quadratic form on product and pi types
 
@@ -29,6 +31,8 @@ forms specifically.
 
 -/
 
+@[expose] public section
+
 
 universe u v w
 
@@ -36,8 +40,6 @@ variable {ι : Type*} {R : Type*} {M₁ M₂ N₁ N₂ P : Type*} {Mᵢ Nᵢ : �
 
 
 namespace QuadraticMap
-
-open QuadraticMap
 
 section Prod
 
@@ -62,7 +64,7 @@ def IsometryEquiv.prod
     (e₁ : Q₁.IsometryEquiv Q₁') (e₂ : Q₂.IsometryEquiv Q₂') :
     (Q₁.prod Q₂).IsometryEquiv (Q₁'.prod Q₂') where
   map_app' x := congr_arg₂ (· + ·) (e₁.map_app x.1) (e₂.map_app x.2)
-  toLinearEquiv := LinearEquiv.prod e₁.toLinearEquiv e₂.toLinearEquiv
+  toLinearEquiv := LinearEquiv.prodCongr e₁.toLinearEquiv e₂.toLinearEquiv
 
 /-- `LinearMap.inl` as an isometry. -/
 @[simps!]
@@ -260,7 +262,7 @@ def IsometryEquiv.pi [Fintype ι]
     {Q : ∀ i, QuadraticMap R (Mᵢ i) P} {Q' : ∀ i, QuadraticMap R (Nᵢ i) P}
     (e : ∀ i, (Q i).IsometryEquiv (Q' i)) : (pi Q).IsometryEquiv (pi Q') where
   map_app' x := by
-    simp only [pi_apply, LinearEquiv.piCongrRight, LinearEquiv.toFun_eq_coe,
+    simp only [pi_apply, LinearEquiv.piCongrRight,
       IsometryEquiv.coe_toLinearEquiv, IsometryEquiv.map_app]
   toLinearEquiv := LinearEquiv.piCongrRight fun i => (e i : Mᵢ i ≃ₗ[R] Nᵢ i)
 
@@ -282,7 +284,7 @@ def Isometry.proj [Fintype ι] [DecidableEq ι] (i : ι) (Q : QuadraticMap R (M�
     rw [Pi.single_eq_of_ne hij, zero_apply]
 
 /-- Note that `QuadraticMap.Isometry.id` would not be well-typed as the RHS. -/
-@[simp, nolint simpNF]  -- ignore the bogus "Left-hand side does not simplify" lint error
+@[simp]
 theorem Isometry.proj_comp_single_of_same [Fintype ι] [DecidableEq ι]
     (i : ι) (Q : QuadraticMap R (Mᵢ i) P) :
     (proj i Q).comp (single _ i) = .ofEq (Pi.single_eq_same _ _) :=
@@ -315,7 +317,8 @@ theorem anisotropic_of_pi [Fintype ι]
   · subst hji; rw [Pi.single_eq_same, hx]
   · rw [Pi.single_eq_of_ne hji, map_zero]
 
-theorem nonneg_pi_iff {P} [Fintype ι] [OrderedAddCommMonoid P] [Module R P]
+theorem nonneg_pi_iff {P} [Fintype ι] [AddCommMonoid P] [PartialOrder P] [IsOrderedAddMonoid P]
+    [Module R P]
     {Q : ∀ i, QuadraticMap R (Mᵢ i) P} : (∀ x, 0 ≤ pi Q x) ↔ ∀ i x, 0 ≤ Q i x := by
   simp_rw [pi, sum_apply, comp_apply, LinearMap.proj_apply]
   constructor
@@ -328,7 +331,8 @@ theorem nonneg_pi_iff {P} [Fintype ι] [OrderedAddCommMonoid P] [Module R P]
   · rintro h x
     exact Finset.sum_nonneg fun i _ => h i (x i)
 
-theorem posDef_pi_iff {P} [Fintype ι] [OrderedAddCommMonoid P] [Module R P]
+theorem posDef_pi_iff {P} [Fintype ι] [AddCommMonoid P] [PartialOrder P] [IsOrderedAddMonoid P]
+    [Module R P]
     {Q : ∀ i, QuadraticMap R (Mᵢ i) P} : (pi Q).PosDef ↔ ∀ i, (Q i).PosDef := by
   simp_rw [posDef_iff_nonneg, nonneg_pi_iff]
   constructor

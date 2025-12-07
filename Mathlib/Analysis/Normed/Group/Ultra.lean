@@ -3,11 +3,13 @@ Copyright (c) 2024 Yakov Pechersky. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Yakov Pechersky, David Loeffler
 -/
-import Mathlib.Analysis.Normed.Group.Uniform
-import Mathlib.Topology.Algebra.Nonarchimedean.Basic
-import Mathlib.Topology.MetricSpace.Ultra.Basic
-import Mathlib.Topology.Algebra.InfiniteSum.Group
-import Mathlib.Topology.Algebra.Order.LiminfLimsup
+module
+
+public import Mathlib.Analysis.Normed.Group.Uniform
+public import Mathlib.Topology.Algebra.Nonarchimedean.Basic
+public import Mathlib.Topology.MetricSpace.Ultra.Basic
+public import Mathlib.Topology.Algebra.InfiniteSum.Group
+public import Mathlib.Topology.Order.LiminfLimsup
 
 /-!
 # Ultrametric norms
@@ -31,6 +33,8 @@ in `NNReal` is 0, so easier to make statements about maxima of empty sets.
 
 ultrametric, nonarchimedean
 -/
+
+@[expose] public section
 open Metric NNReal
 
 namespace IsUltrametricDist
@@ -77,22 +81,19 @@ lemma isUltrametricDist_of_forall_nnnorm_mul_le_max_nnnorm
   isUltrametricDist_of_forall_norm_mul_le_max_norm h
 
 lemma isUltrametricDist_of_isNonarchimedean_nnnorm {S' : Type*} [SeminormedAddGroup S']
-    (h : IsNonarchimedean ((↑) ∘ (nnnorm : S' → ℝ≥0))) : IsUltrametricDist S' :=
+    (h : IsNonarchimedean (nnnorm : S' → ℝ≥0)) : IsUltrametricDist S' :=
   isUltrametricDist_of_forall_nnnorm_add_le_max_nnnorm h
 
 lemma isNonarchimedean_nnnorm {R} [SeminormedAddCommGroup R] [IsUltrametricDist R] :
     IsNonarchimedean (‖·‖₊ : R → ℝ) := by
-  intro x y
-  convert dist_triangle_max 0 x (x + y) using 1
-  · simp
-  · congr <;> simp [SeminormedAddGroup.dist_eq]
+  simpa using isNonarchimedean_norm
 
 lemma isUltrametricDist_iff_isNonarchimedean_nnnorm {R} [SeminormedAddCommGroup R] :
     IsUltrametricDist R ↔ IsNonarchimedean (‖·‖₊ : R → ℝ) :=
   ⟨fun h => h.isNonarchimedean_norm, IsUltrametricDist.isUltrametricDist_of_isNonarchimedean_norm⟩
 
 /-- All triangles are isosceles in an ultrametric normed group. -/
-@[to_additive "All triangles are isosceles in an ultrametric normed additive group."]
+@[to_additive /-- All triangles are isosceles in an ultrametric normed additive group. -/]
 lemma norm_mul_eq_max_of_norm_ne_norm
     {x y : S} (h : ‖x‖ ≠ ‖y‖) : ‖x * y‖ = max ‖x‖ ‖y‖ := by
   rw [← div_inv_eq_mul, ← dist_eq_norm_div, dist_eq_max_of_dist_ne_dist _ 1 _ (by simp [h])]
@@ -104,7 +105,7 @@ lemma norm_eq_of_mul_norm_lt_max {x y : S} (h : ‖x * y‖ < max ‖x‖ ‖y�
   not_ne_iff.mp (h.ne ∘ norm_mul_eq_max_of_norm_ne_norm)
 
 /-- All triangles are isosceles in an ultrametric normed group. -/
-@[to_additive "All triangles are isosceles in an ultrametric normed additive group."]
+@[to_additive /-- All triangles are isosceles in an ultrametric normed additive group. -/]
 lemma nnnorm_mul_eq_max_of_nnnorm_ne_nnnorm
     {x y : S} (h : ‖x‖₊ ≠ ‖y‖₊) : ‖x * y‖₊ = max ‖x‖₊ ‖y‖₊ := by
   simpa only [← NNReal.coe_inj, NNReal.coe_max] using
@@ -116,13 +117,13 @@ lemma nnnorm_eq_of_mul_nnnorm_lt_max {x y : S} (h : ‖x * y‖₊ < max ‖x‖
   not_ne_iff.mp (h.ne ∘ nnnorm_mul_eq_max_of_nnnorm_ne_nnnorm)
 
 /-- All triangles are isosceles in an ultrametric normed group. -/
-@[to_additive "All triangles are isosceles in an ultrametric normed additive group."]
+@[to_additive /-- All triangles are isosceles in an ultrametric normed additive group. -/]
 lemma norm_div_eq_max_of_norm_div_ne_norm_div (x y z : S) (h : ‖x / y‖ ≠ ‖y / z‖) :
     ‖x / z‖ = max ‖x / y‖ ‖y / z‖ := by
   simpa only [div_mul_div_cancel] using norm_mul_eq_max_of_norm_ne_norm h
 
 /-- All triangles are isosceles in an ultrametric normed group. -/
-@[to_additive "All triangles are isosceles in an ultrametric normed additive group."]
+@[to_additive /-- All triangles are isosceles in an ultrametric normed additive group. -/]
 lemma nnnorm_div_eq_max_of_nnnorm_div_ne_nnnorm_div (x y z : S) (h : ‖x / y‖₊ ≠ ‖y / z‖₊) :
     ‖x / z‖₊ = max ‖x / y‖₊ ‖y / z‖₊ := by
   simpa only [← NNReal.coe_inj, NNReal.coe_max] using
@@ -157,8 +158,8 @@ variable (S)
 /--
 In a group with an ultrametric norm, open balls around 1 of positive radius are open subgroups.
 -/
-@[to_additive "In an additive group with an ultrametric norm, open balls around 0 of
-positive radius are open subgroups."]
+@[to_additive /-- In an additive group with an ultrametric norm, open balls around 0 of
+positive radius are open subgroups. -/]
 def ball_openSubgroup {r : ℝ} (hr : 0 < r) : OpenSubgroup S where
   carrier := Metric.ball (1 : S) r
   mul_mem' {x} {y} hx hy := by
@@ -171,8 +172,8 @@ def ball_openSubgroup {r : ℝ} (hr : 0 < r) : OpenSubgroup S where
 /--
 In a group with an ultrametric norm, closed balls around 1 of positive radius are open subgroups.
 -/
-@[to_additive "In an additive group with an ultrametric norm, closed balls around 0 of positive
-radius are open subgroups."]
+@[to_additive /-- In an additive group with an ultrametric norm, closed balls around 0 of positive
+radius are open subgroups. -/]
 def closedBall_openSubgroup {r : ℝ} (hr : 0 < r) : OpenSubgroup S where
   carrier := Metric.closedBall (1 : S) r
   mul_mem' {x} {y} hx hy := by
@@ -192,19 +193,18 @@ variable {M ι : Type*} [SeminormedCommGroup M] [IsUltrametricDist M]
 
 /-- A commutative group with an ultrametric group seminorm is nonarchimedean (as a topological
 group, i.e. every neighborhood of 1 contains an open subgroup). -/
-@[to_additive "A commutative additive group with an ultrametric group seminorm is nonarchimedean
-(as a topological group, i.e. every neighborhood of 0 contains an open subgroup)."]
+@[to_additive /-- A commutative additive group with an ultrametric group seminorm is nonarchimedean
+(as a topological group, i.e. every neighborhood of 0 contains an open subgroup). -/]
 instance nonarchimedeanGroup : NonarchimedeanGroup M where
   is_nonarchimedean := by simpa only [Metric.mem_nhds_iff]
     using fun U ⟨ε, hεp, hεU⟩ ↦ ⟨ball_openSubgroup M hεp, hεU⟩
 
 /-- Nonarchimedean norm of a product is less than or equal the norm of any term in the product.
 This version is phrased using `Finset.sup'` and `Finset.Nonempty` due to `Finset.sup`
-operating over an `OrderBot`, which `ℝ` is not.
--/
-@[to_additive "Nonarchimedean norm of a sum is less than or equal the norm of any term in the sum.
-This version is phrased using `Finset.sup'` and `Finset.Nonempty` due to `Finset.sup`
-operating over an `OrderBot`, which `ℝ` is not. "]
+operating over an `OrderBot`, which `ℝ` is not. -/
+@[to_additive /-- Nonarchimedean norm of a sum is less than or equal the norm of any term in the
+sum. This version is phrased using `Finset.sup'` and `Finset.Nonempty` due to `Finset.sup`
+operating over an `OrderBot`, which `ℝ` is not. -/]
 lemma _root_.Finset.Nonempty.norm_prod_le_sup'_norm {s : Finset ι} (hs : s.Nonempty) (f : ι → M) :
     ‖∏ i ∈ s, f i‖ ≤ s.sup' hs (‖f ·‖) := by
   simp only [Finset.le_sup'_iff]
@@ -219,11 +219,11 @@ lemma _root_.Finset.Nonempty.norm_prod_le_sup'_norm {s : Finset ι} (hs : s.None
 
 /-- Nonarchimedean norm of a product is less than or equal to the largest norm of a term in the
 product. -/
-@[to_additive "Nonarchimedean norm of a sum is less than or equal to the largest norm of a term in
-the sum."]
+@[to_additive /-- Nonarchimedean norm of a sum is less than or equal to the largest norm of a term
+in the sum. -/]
 lemma _root_.Finset.nnnorm_prod_le_sup_nnnorm (s : Finset ι) (f : ι → M) :
     ‖∏ i ∈ s, f i‖₊ ≤ s.sup (‖f ·‖₊) := by
-  rcases s.eq_empty_or_nonempty with rfl|hs
+  rcases s.eq_empty_or_nonempty with rfl | hs
   · simp only [Finset.prod_empty, nnnorm_one', Finset.sup_empty, bot_eq_zero', le_refl]
   · simpa only [← Finset.sup'_eq_sup hs, Finset.le_sup'_iff, coe_le_coe, coe_nnnorm']
       using hs.norm_prod_le_sup'_norm f
@@ -232,8 +232,8 @@ lemma _root_.Finset.nnnorm_prod_le_sup_nnnorm (s : Finset ι) (f : ι → M) :
 Generalised ultrametric triangle inequality for finite products in commutative groups with
 an ultrametric norm.
 -/
-@[to_additive "Generalised ultrametric triangle inequality for finite sums in additive commutative
-groups with an ultrametric norm."]
+@[to_additive /-- Generalised ultrametric triangle inequality for finite sums in additive
+commutative groups with an ultrametric norm. -/]
 lemma nnnorm_prod_le_of_forall_le {s : Finset ι} {f : ι → M} {C : ℝ≥0}
     (hC : ∀ i ∈ s, ‖f i‖₊ ≤ C) : ‖∏ i ∈ s, f i‖₊ ≤ C :=
   (s.nnnorm_prod_le_sup_nnnorm f).trans <| Finset.sup_le hC
@@ -242,8 +242,8 @@ lemma nnnorm_prod_le_of_forall_le {s : Finset ι} {f : ι → M} {C : ℝ≥0}
 Generalised ultrametric triangle inequality for nonempty finite products in commutative groups with
 an ultrametric norm.
 -/
-@[to_additive "Generalised ultrametric triangle inequality for nonempty finite sums in additive
-commutative groups with an ultrametric norm."]
+@[to_additive /-- Generalised ultrametric triangle inequality for nonempty finite sums in additive
+commutative groups with an ultrametric norm. -/]
 lemma norm_prod_le_of_forall_le_of_nonempty {s : Finset ι} (hs : s.Nonempty) {f : ι → M} {C : ℝ}
     (hC : ∀ i ∈ s, ‖f i‖ ≤ C) : ‖∏ i ∈ s, f i‖ ≤ C :=
   (hs.norm_prod_le_sup'_norm f).trans (Finset.sup'_le hs _ hC)
@@ -252,8 +252,8 @@ lemma norm_prod_le_of_forall_le_of_nonempty {s : Finset ι} (hs : s.Nonempty) {f
 Generalised ultrametric triangle inequality for finite products in commutative groups with
 an ultrametric norm.
 -/
-@[to_additive "Generalised ultrametric triangle inequality for finite sums in additive commutative
-groups with an ultrametric norm."]
+@[to_additive /-- Generalised ultrametric triangle inequality for finite sums in additive
+commutative groups with an ultrametric norm. -/]
 lemma norm_prod_le_of_forall_le_of_nonneg {s : Finset ι} {f : ι → M} {C : ℝ}
     (h_nonneg : 0 ≤ C) (hC : ∀ i ∈ s, ‖f i‖ ≤ C) : ‖∏ i ∈ s, f i‖ ≤ C := by
   lift C to NNReal using h_nonneg
@@ -263,21 +263,21 @@ lemma norm_prod_le_of_forall_le_of_nonneg {s : Finset ι} {f : ι → M} {C : �
 Given a function `f : ι → M` and a nonempty finite set `t ⊆ ι`, we can always find `i ∈ t` such that
 `‖∏ j in t, f j‖ ≤ ‖f i‖`.
 -/
-@[to_additive "Given a function `f : ι → M` and a nonempty finite set `t ⊆ ι`, we can always find
-`i ∈ t` such that `‖∑ j in t, f j‖ ≤ ‖f i‖`."]
+@[to_additive /-- Given a function `f : ι → M` and a nonempty finite set `t ⊆ ι`, we can always find
+`i ∈ t` such that `‖∑ j ∈ t, f j‖ ≤ ‖f i‖`. -/]
 theorem exists_norm_finset_prod_le_of_nonempty {t : Finset ι} (ht : t.Nonempty) (f : ι → M) :
-    ∃ i ∈ t, ‖∏ j in t, f j‖ ≤ ‖f i‖ :=
+    ∃ i ∈ t, ‖∏ j ∈ t, f j‖ ≤ ‖f i‖ :=
   match t.exists_mem_eq_sup' ht (‖f ·‖) with
   |⟨j, hj, hj'⟩ => ⟨j, hj, (ht.norm_prod_le_sup'_norm f).trans (le_of_eq hj')⟩
 
 /--
 Given a function `f : ι → M` and a finite set `t ⊆ ι`, we can always find `i : ι`, belonging to `t`
-if `t` is nonempty, such that `‖∏ j in t, f j‖ ≤ ‖f i‖`.
+if `t` is nonempty, such that `‖∏ j ∈ t, f j‖ ≤ ‖f i‖`.
 -/
-@[to_additive "Given a function `f : ι → M` and a finite set `t ⊆ ι`, we can always find `i : ι`,
-belonging to `t` if `t` is nonempty, such that `‖∑ j in t, f j‖ ≤ ‖f i‖`."]
+@[to_additive /-- Given a function `f : ι → M` and a finite set `t ⊆ ι`, we can always find `i : ι`,
+belonging to `t` if `t` is nonempty, such that `‖∑ j ∈ t, f j‖ ≤ ‖f i‖`. -/]
 theorem exists_norm_finset_prod_le (t : Finset ι) [Nonempty ι] (f : ι → M) :
-    ∃ i : ι, (t.Nonempty → i ∈ t) ∧ ‖∏ j in t, f j‖ ≤ ‖f i‖ := by
+    ∃ i : ι, (t.Nonempty → i ∈ t) ∧ ‖∏ j ∈ t, f j‖ ≤ ‖f i‖ := by
   rcases t.eq_empty_or_nonempty with rfl | ht
   · simp
   exact (fun ⟨i, h, h'⟩ => ⟨i, fun _ ↦ h, h'⟩) <| exists_norm_finset_prod_le_of_nonempty ht f
@@ -286,21 +286,20 @@ theorem exists_norm_finset_prod_le (t : Finset ι) [Nonempty ι] (f : ι → M) 
 Given a function `f : ι → M` and a multiset `t : Multiset ι`, we can always find `i : ι`, belonging
 to `t` if `t` is nonempty, such that `‖(s.map f).prod‖ ≤ ‖f i‖`.
 -/
-@[to_additive "Given a function `f : ι → M` and a multiset `t : Multiset ι`, we can always find
-`i : ι`, belonging to `t` if `t` is nonempty, such that `‖(s.map f).sum‖ ≤ ‖f i‖`."]
+@[to_additive /-- Given a function `f : ι → M` and a multiset `t : Multiset ι`, we can always find
+`i : ι`, belonging to `t` if `t` is nonempty, such that `‖(s.map f).sum‖ ≤ ‖f i‖`. -/]
 theorem exists_norm_multiset_prod_le (s : Multiset ι) [Nonempty ι] {f : ι → M} :
     ∃ i : ι, (s ≠ 0 → i ∈ s) ∧ ‖(s.map f).prod‖ ≤ ‖f i‖ := by
   inhabit ι
   induction s using Multiset.induction_on with
   | empty => simp
-  | @cons a t hM =>
+  | cons a t hM =>
       obtain ⟨M, hMs, hM⟩ := hM
-      by_cases hMa : ‖f M‖ ≤ ‖f a‖
+      by_cases! hMa : ‖f M‖ ≤ ‖f a‖
       · refine ⟨a, by simp, ?_⟩
         · rw [Multiset.map_cons, Multiset.prod_cons]
           exact le_trans (norm_mul_le_max _ _) (max_le (le_refl _) (le_trans hM hMa))
-      · rw [not_le] at hMa
-        rcases eq_or_ne t 0 with rfl|ht
+      · rcases eq_or_ne t 0 with rfl | ht
         · exact ⟨a, by simp, by simp⟩
         · refine ⟨M, ?_, ?_⟩
           · simp [hMs ht]
@@ -344,6 +343,30 @@ lemma norm_tprod_le_of_forall_le_of_nonneg {f : ι → M} {C : ℝ} (hC : 0 ≤ 
 @[to_additive]
 lemma nnnorm_tprod_le_of_forall_le {f : ι → M} {C : ℝ≥0} (h : ∀ i, ‖f i‖₊ ≤ C) : ‖∏' i, f i‖₊ ≤ C :=
   (nnnorm_tprod_le f).trans (ciSup_le' h)
+
+@[to_additive]
+lemma nnnorm_prod_eq_sup_of_pairwise_ne {s : Finset ι} {f : ι → M}
+    (hs : Set.Pairwise s (fun i j ↦ ‖f i‖₊ ≠ ‖f j‖₊)) :
+    ‖∏ i ∈ s, f i‖₊ = s.sup (fun i ↦ ‖f i‖₊) := by
+  induction s using Finset.cons_induction with
+  | empty => simp
+  | cons a s ha IH =>
+    rcases s.eq_empty_or_nonempty with rfl | hs'
+    · simp
+    specialize IH (hs.mono (by simp))
+    obtain ⟨j, hj, hj'⟩ : ∃ j ∈ s, ‖∏ i ∈ s, f i‖₊ = ‖f j‖₊ := by
+      simpa [IH] using s.exists_mem_eq_sup hs' _
+    suffices ‖f a‖₊ ≠ ‖∏ x ∈ s, f x‖₊ by simp [← IH, nnnorm_mul_eq_max_of_nnnorm_ne_nnnorm this]
+    rw [hj']
+    apply hs <;> grind
+
+@[to_additive]
+lemma norm_prod_eq_sup'_of_pairwise_ne {s : Finset ι} {f : ι → M} (hs' : s.Nonempty)
+    (hs : Set.Pairwise s (fun i j ↦ ‖f i‖ ≠ ‖f j‖)) :
+    ‖∏ i ∈ s, f i‖ = s.sup' hs' (fun i ↦ ‖f i‖) := by
+  rw [← coe_nnnorm', nnnorm_prod_eq_sup_of_pairwise_ne, ← Finset.sup'_eq_sup hs']
+  · exact s.comp_sup'_eq_sup'_comp hs' _ (by tauto)
+  · simpa [← NNReal.coe_inj] using hs
 
 end CommGroup
 

@@ -3,11 +3,14 @@ Copyright (c) 2021 Heather Macbeth. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Heather Macbeth, Frédéric Dupuis
 -/
-import Mathlib.Analysis.InnerProductSpace.Calculus
-import Mathlib.Analysis.InnerProductSpace.Dual
-import Mathlib.Analysis.InnerProductSpace.Adjoint
-import Mathlib.Analysis.Calculus.LagrangeMultipliers
-import Mathlib.LinearAlgebra.Eigenspace.Basic
+module
+
+public import Mathlib.Analysis.InnerProductSpace.Calculus
+public import Mathlib.Analysis.InnerProductSpace.Dual
+public import Mathlib.Analysis.InnerProductSpace.Adjoint
+public import Mathlib.Analysis.Calculus.LagrangeMultipliers
+public import Mathlib.LinearAlgebra.Eigenspace.Basic
+public import Mathlib.Algebra.EuclideanDomain.Basic
 
 /-!
 # The Rayleigh quotient
@@ -34,11 +37,13 @@ A slightly more elaborate corollary is that if `E` is complete and `T` is a comp
 
 -/
 
+@[expose] public section
+
 
 variable {𝕜 : Type*} [RCLike 𝕜]
 variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace 𝕜 E]
 
-local notation "⟪" x ", " y "⟫" => @inner 𝕜 _ _ x y
+local notation "⟪" x ", " y "⟫" => inner 𝕜 x y
 
 open scoped NNReal
 
@@ -56,21 +61,17 @@ theorem rayleigh_smul (x : E) {c : 𝕜} (hc : c ≠ 0) :
     rayleighQuotient T (c • x) = rayleighQuotient T x := by
   by_cases hx : x = 0
   · simp [hx]
-  have : ‖c‖ ≠ 0 := by simp [hc]
-  have : ‖x‖ ≠ 0 := by simp [hx]
-  field_simp [norm_smul, T.reApplyInnerSelf_smul]
-  ring
+  simp [field, norm_smul, T.reApplyInnerSelf_smul]
 
 theorem image_rayleigh_eq_image_rayleigh_sphere {r : ℝ} (hr : 0 < r) :
     rayleighQuotient T '' {0}ᶜ = rayleighQuotient T '' sphere 0 r := by
   ext a
   constructor
   · rintro ⟨x, hx : x ≠ 0, hxT⟩
-    have : ‖x‖ ≠ 0 := by simp [hx]
     let c : 𝕜 := ↑‖x‖⁻¹ * r
     have : c ≠ 0 := by simp [c, hx, hr.ne']
     refine ⟨c • x, ?_, ?_⟩
-    · field_simp [c, norm_smul, abs_of_pos hr]
+    · simp [field, c, norm_smul, abs_of_pos hr]
     · rw [T.rayleigh_smul x this]
       exact hxT
   · rintro ⟨x, hx, hxT⟩
@@ -104,7 +105,7 @@ theorem _root_.LinearMap.IsSymmetric.hasStrictFDerivAt_reApplyInnerSelf {T : F �
   convert T.hasStrictFDerivAt.inner ℝ (hasStrictFDerivAt_id x₀) using 1
   ext y
   rw [ContinuousLinearMap.smul_apply, ContinuousLinearMap.comp_apply, fderivInnerCLM_apply,
-    ContinuousLinearMap.prod_apply, innerSL_apply, id, ContinuousLinearMap.id_apply,
+    ContinuousLinearMap.prod_apply, innerSL_apply_apply, id, ContinuousLinearMap.id_apply,
     hT.apply_clm x₀ y, real_inner_comm _ x₀, two_smul]
 
 variable [CompleteSpace F] {T : F →L[ℝ] F}
@@ -115,7 +116,7 @@ theorem linearly_dependent_of_isLocalExtrOn (hT : IsSelfAdjoint T) {x₀ : F}
   have H : IsLocalExtrOn T.reApplyInnerSelf {x : F | ‖x‖ ^ 2 = ‖x₀‖ ^ 2} x₀ := by
     convert hextr
     ext x
-    simp [dist_eq_norm]
+    simp
   -- find Lagrange multipliers for the function `T.re_apply_inner_self` and the
   -- hypersurface-defining function `fun x ↦ ‖x‖ ^ 2`
   obtain ⟨a, b, h₁, h₂⟩ :=
@@ -123,13 +124,15 @@ theorem linearly_dependent_of_isLocalExtrOn (hT : IsSelfAdjoint T) {x₀ : F}
       (hT.isSymmetric.hasStrictFDerivAt_reApplyInnerSelf x₀)
   refine ⟨a, b, h₁, ?_⟩
   apply (InnerProductSpace.toDualMap ℝ F).injective
-  simp only [LinearIsometry.map_add, LinearIsometry.map_smul, LinearIsometry.map_zero]
+  simp only [LinearIsometry.map_add, LinearIsometry.map_zero]
   -- Note: https://github.com/leanprover-community/mathlib4/pull/8386 changed `map_smulₛₗ` into `map_smulₛₗ _`
   simp only [map_smulₛₗ _, RCLike.conj_to_real]
   change a • innerSL ℝ x₀ + b • innerSL ℝ (T x₀) = 0
   apply smul_right_injective (F →L[ℝ] ℝ) (two_ne_zero : (2 : ℝ) ≠ 0)
   simpa only [two_smul, smul_add, add_smul, add_zero] using h₂
 
+-- Non-terminal simp, used to be field_simp
+set_option linter.flexible false in
 open scoped InnerProductSpace in
 theorem eq_smul_self_of_isLocalExtrOn_real (hT : IsSelfAdjoint T) {x₀ : F}
     (hextr : IsLocalExtrOn T.reApplyInnerSelf (sphere (0 : F) ‖x₀‖) x₀) :
@@ -142,15 +145,12 @@ theorem eq_smul_self_of_isLocalExtrOn_real (hT : IsSelfAdjoint T) {x₀ : F}
     refine absurd ?_ hx₀
     apply smul_right_injective F this
     simpa [hb] using h₂
-  let c : ℝ := -b⁻¹ * a
-  have hc : T x₀ = c • x₀ := by
-    have : b * (b⁻¹ * a) = a := by field_simp [mul_comm]
-    apply smul_right_injective F hb
-    simp [c, eq_neg_of_add_eq_zero_left h₂, ← mul_smul, this]
+  have hc : T x₀ = (-b⁻¹ * a) • x₀ := by
+    linear_combination (norm := match_scalars <;> field) b⁻¹ • h₂
+  set c : ℝ := -b⁻¹ * a
   convert hc
-  have : ‖x₀‖ ≠ 0 := by simp [hx₀]
   have := congr_arg (fun x => ⟪x, x₀⟫_ℝ) hc
-  field_simp [inner_smul_left, real_inner_self_eq_norm_mul_norm, sq] at this ⊢
+  simp [field, inner_smul_left, mul_comm a] at this ⊢
   exact this
 
 end Real

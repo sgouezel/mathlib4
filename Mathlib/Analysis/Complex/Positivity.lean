@@ -3,7 +3,9 @@ Copyright (c) 2024 Michael Stoll. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Michael Stoll
 -/
-import Mathlib.Analysis.Complex.TaylorSeries
+module
+
+public import Mathlib.Analysis.Complex.TaylorSeries
 
 /-!
 # Nonnegativity of values of holomorphic functions
@@ -15,6 +17,8 @@ variant `Differentiable.nonneg_of_iteratedDeriv_nonneg` for entire functions and
 showing `f z ≥ f c` when all iterated derivatives except `f` itseld are nonnegative.
 -/
 
+@[expose] public section
+
 open Complex
 
 open scoped ComplexOrder
@@ -25,7 +29,7 @@ namespace DifferentiableOn
 derivatives at `c` are all nonnegative real has nonnegative real values on `c + [0,r)`. -/
 theorem nonneg_of_iteratedDeriv_nonneg {f : ℂ → ℂ} {c : ℂ} {r : ℝ}
     (hf : DifferentiableOn ℂ f (Metric.ball c r)) (h : ∀ n, 0 ≤ iteratedDeriv n f c) ⦃z : ℂ⦄
-    (hz₁ : c ≤ z) (hz₂ : z ∈ Metric.ball c r):
+    (hz₁ : c ≤ z) (hz₂ : z ∈ Metric.ball c r) :
     0 ≤ f z := by
   have H := taylorSeries_eq_on_ball' hz₂ hf
   rw [← sub_nonneg] at hz₁
@@ -35,8 +39,7 @@ theorem nonneg_of_iteratedDeriv_nonneg {f : ℂ → ℂ} {c : ℂ} {r : ℝ}
   rw [← ofReal_natCast, ← ofReal_pow, ← ofReal_inv, eq_re_of_ofReal_le (h n), ← ofReal_mul,
     ← ofReal_mul]
   norm_cast at hz₁ ⊢
-  have := zero_re ▸ (Complex.le_def.mp (h n)).1
-  positivity
+  positivity [zero_re ▸ (Complex.le_def.mp (h n)).1]
 
 end DifferentiableOn
 
@@ -50,7 +53,7 @@ theorem nonneg_of_iteratedDeriv_nonneg {f : ℂ → ℂ} (hf : Differentiable �
   refine hf.differentiableOn.nonneg_of_iteratedDeriv_nonneg (r := (z - c).re + 1) h hz ?_
   rw [← sub_nonneg] at hz
   rw [Metric.mem_ball, dist_eq, eq_re_of_ofReal_le hz]
-  simpa only [Complex.abs_of_nonneg (nonneg_iff.mp hz).1] using lt_add_one _
+  simpa only [Complex.norm_of_nonneg (nonneg_iff.mp hz).1] using lt_add_one _
 
 /-- An entire function whose iterated derivatives at `c` are all nonnegative real (except
 possibly the value itself) has values of the form `f c + nonneg. real` on the set `c + ℝ≥0`. -/

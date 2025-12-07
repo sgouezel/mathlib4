@@ -3,8 +3,10 @@ Copyright (c) 2024 Damiano Testa. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Damiano Testa
 -/
-import Lean.Elab.Command
-import Mathlib.Init
+module
+
+public meta import Lean.Elab.Command
+public import Mathlib.Init
 
 /-!
 # The `stacks` and `kerodon` attributes
@@ -16,6 +18,8 @@ tags from the [Stacks Project](https://stacks.math.columbia.edu/tags) and
 While the Stacks Project is the main focus, because the tag format at Kerodon is
 compatible, the attribute can be used to tag results with Kerodon tags as well.
 -/
+
+public meta section
 
 open Lean Elab
 
@@ -74,14 +78,14 @@ def stacksTagFn : ParserFn := fun c s =>
   else if s.pos == i then
     ParserState.mkError s "stacks tag"
   else
-    let tag := Substring.mk c.input i s.pos |>.toString
+    let tag := c.extract i s.pos
     if !tag.all fun c => c.isDigit || c.isUpper then
       ParserState.mkUnexpectedError s
         "Stacks tags must consist only of digits and uppercase letters."
     else if tag.length != 4 then
       ParserState.mkUnexpectedError s "Stacks tags must be exactly 4 characters"
     else
-      mkNodeToken stacksTagKind i c s
+      mkNodeToken stacksTagKind i true c s
 
 @[inherit_doc stacksTagFn]
 def stacksTagNoAntiquot : Parser := {
@@ -143,12 +147,22 @@ syntax (name := stacksTag) stacksTagDB stacksTagParser (ppSpace str)? : attr
 initialize Lean.registerBuiltinAttribute {
   name := `stacksTag
   descr := "Apply a Stacks or Kerodon project tag to a theorem."
-  add := fun decl stx _attrKind => match stx with
-    | `(attr| stacks $tag $[$comment]?) => do
-      addTagEntry decl .stacks (← tag.getStacksTag) <| (comment.map (·.getString)).getD ""
-    | `(attr| kerodon $tag $[$comment]?) => do
-      addTagEntry decl .kerodon (← tag.getStacksTag) <| (comment.map (·.getString)).getD ""
-    | _ => throwUnsupportedSyntax
+  add := fun decl stx _attrKind => do
+    let oldDoc := (← findDocString? (← getEnv) decl).getD ""
+    let (SorK, database, url, tag, comment) := ← match stx with
+      | `(attr| stacks $tag $[$comment]?) =>
+        return ("Stacks", Database.stacks, "https://stacks.math.columbia.edu/tag", tag, comment)
+      | `(attr| kerodon $tag $[$comment]?) =>
+        return ("Kerodon", Database.kerodon, "https://kerodon.net/tag", tag, comment)
+      | _ => throwUnsupportedSyntax
+    let tagStr ← tag.getStacksTag
+    let comment := (comment.map (·.getString)).getD ""
+    let commentInDoc := if comment = "" then "" else s!" ({comment})"
+    let newDoc := [oldDoc, s!"[{SorK} Tag {tagStr}]({url}/{tagStr}){commentInDoc}"]
+    addDocStringCore decl <| "\n\n".intercalate (newDoc.filter (· != ""))
+    addTagEntry decl database tagStr <| comment
+  -- docstrings are immutable once an asynchronous elaboration task has been started
+  applicationTime := .beforeElaboration
 }
 
 end Mathlib.StacksTag
