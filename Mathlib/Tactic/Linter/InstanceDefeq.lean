@@ -20,10 +20,12 @@ public meta section
 open Lean Meta
 namespace Batteries.Tactic.Lint
 
+/-- A docstring -/
 def getLambdaBody : Expr → Expr
   | .lam _ _ b .. => getLambdaBody b
   | e                => e
 
+/-- Another docstring -/
 def checkInstance (cinfo : ConstantInfo) : MetaM (Option MessageData) := do
   let type := cinfo.type
   let some cls ← Meta.isClass? type | return none
@@ -41,6 +43,7 @@ def checkInstance (cinfo : ConstantInfo) : MetaM (Option MessageData) := do
   forallTelescope type' fun _ type' =>
   return some <| ← addMessageContext m!"{indentExpr type'}{indentExpr type}\n"
 
+/-- A docstring -/
 @[env_linter] public def myLinter : Linter where
   noErrorsFound := "all good."
   errorsFound := "PROBLEM"
