@@ -6,6 +6,7 @@ Authors: Johannes Hölzl, Mario Carneiro
 module
 
 public import Mathlib.MeasureTheory.Measure.AbsolutelyContinuous
+public import Mathlib.MeasureTheory.Measure.AEMeasurable
 public import Mathlib.MeasureTheory.OuterMeasure.BorelCantelli
 
 /-!
@@ -38,32 +39,37 @@ variable {mα : MeasurableSpace α} {mβ : MeasurableSpace β} {mγ : Measurable
 namespace Measure
 
 /-- A map `f : α → β` is said to be *quasi-measure-preserving* (a.k.a. non-singular) w.r.t. measures
-`μa` and `μb` if it is measurable and `μb s = 0` implies `μa (f ⁻¹' s) = 0`. -/
+`μa` and `μb` if it is ae-measurable for `μa` and `μb s = 0` implies `μa (f ⁻¹' s) = 0`. -/
 @[fun_prop]
 structure QuasiMeasurePreserving {m0 : MeasurableSpace α} (f : α → β)
   (μa : Measure α := by volume_tac)
   (μb : Measure β := by volume_tac) : Prop where
-  protected measurable : Measurable f
+  protected aemeasurable : AEMeasurable f μa
   protected absolutelyContinuous : μa.map f ≪ μb
 
-attribute [fun_prop] QuasiMeasurePreserving.measurable
+attribute [fun_prop] QuasiMeasurePreserving.aemeasurable
 
 namespace QuasiMeasurePreserving
 
 @[fun_prop]
 protected theorem id {_m0 : MeasurableSpace α} (μ : Measure α) : QuasiMeasurePreserving id μ μ :=
-  ⟨measurable_id, map_id.absolutelyContinuous⟩
+  ⟨aemeasurable_id, map_id.absolutelyContinuous⟩
 
 variable {μa μa' : Measure α} {μb μb' : Measure β} {μc : Measure γ} {f : α → β}
+
+protected theorem _root_.AEMeasurable.quasiMeasurePreserving
+    {_m0 : MeasurableSpace α} {μ : Measure α} (hf : AEMeasurable f μ) :
+    QuasiMeasurePreserving f μ (μ.map f) :=
+  ⟨hf, AbsolutelyContinuous.rfl⟩
 
 protected theorem _root_.Measurable.quasiMeasurePreserving
     {_m0 : MeasurableSpace α} (hf : Measurable f) (μ : Measure α) :
     QuasiMeasurePreserving f μ (μ.map f) :=
-  ⟨hf, AbsolutelyContinuous.rfl⟩
+  ⟨hf.aemeasurable, AbsolutelyContinuous.rfl⟩
 
 theorem mono_left (h : QuasiMeasurePreserving f μa μb) (ha : μa' ≪ μa) :
     QuasiMeasurePreserving f μa' μb :=
-  ⟨h.1, (ha.map h.1).trans h.2⟩
+  ⟨h.aemeasurable.mono_ac ha, (ha.map h.1).trans h.2⟩
 
 theorem mono_right (h : QuasiMeasurePreserving f μa μb) (ha : μb ≪ μb') :
     QuasiMeasurePreserving f μa μb' :=

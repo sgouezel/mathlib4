@@ -12,7 +12,7 @@ public import Mathlib.Order.Filter.EventuallyConst
 # Measure-preserving maps
 
 We say that `f : α → β` is a measure-preserving map w.r.t. measures `μ : Measure α` and
-`ν : Measure β` if `f` is measurable and `map f μ = ν`. In this file we define the predicate
+`ν : Measure β` if `f` is ae measurable and `map f μ = ν`. In this file we define the predicate
 `MeasureTheory.MeasurePreserving` and prove its basic properties.
 
 We use the term "measure preserving" because in many applications `α = β` and `μ = ν`.
@@ -43,45 +43,46 @@ variable {μa : Measure α} {μb : Measure β} {μc : Measure γ}
 and `map f μa = μb`. -/
 structure MeasurePreserving (f : α → β)
   (μa : Measure α := by volume_tac) (μb : Measure β := by volume_tac) : Prop where
-  protected measurable : Measurable f
+  protected aemeasurable : AEMeasurable f μa
   protected map_eq : map f μa = μb
+
+protected theorem _root_.AEMeasurable.measurePreserving
+    {f : α → β} {μa : Measure α} (h : AEMeasurable f μa) : MeasurePreserving f μa (map f μa) :=
+  ⟨h, rfl⟩
 
 protected theorem _root_.Measurable.measurePreserving
     {f : α → β} (h : Measurable f) (μa : Measure α) : MeasurePreserving f μa (map f μa) :=
-  ⟨h, rfl⟩
+  h.aemeasurable.measurePreserving
 
 namespace MeasurePreserving
 
 protected theorem id (μ : Measure α) : MeasurePreserving id μ μ :=
-  ⟨measurable_id, map_id⟩
+  ⟨aemeasurable_id, map_id⟩
 
-protected theorem aemeasurable {f : α → β} (hf : MeasurePreserving f μa μb) : AEMeasurable f μa :=
-  hf.1.aemeasurable
-
-protected theorem congr {f f' : α → β} (hf : MeasurePreserving f μa μb) (hf' : Measurable f')
+protected theorem congr {f f' : α → β} (hf : MeasurePreserving f μa μb)
     (h : f =ᵐ[μa] f') : MeasurePreserving f' μa μb := by
-  refine ⟨hf', ?_⟩
+  refine ⟨hf.aemeasurable.congr h, ?_⟩
   rw [Measure.map_congr h.symm]
   exact hf.map_eq
 
 @[nontriviality]
 theorem of_isEmpty [IsEmpty β] (f : α → β) (μa : Measure α) (μb : Measure β) :
     MeasurePreserving f μa μb :=
-  ⟨measurable_of_subsingleton_codomain _, Subsingleton.elim _ _⟩
+  ⟨(measurable_of_subsingleton_codomain _).aemeasurable, Subsingleton.elim _ _⟩
 
 theorem symm (e : α ≃ᵐ β) {μa : Measure α} {μb : Measure β} (h : MeasurePreserving e μa μb) :
     MeasurePreserving e.symm μb μa :=
-  ⟨e.symm.measurable, by
+  ⟨e.symm.measurable.aemeasurable, by
     rw [← h.map_eq, map_map e.symm.measurable e.measurable, e.symm_comp_self, map_id]⟩
 
 theorem restrict_preimage {f : α → β} (hf : MeasurePreserving f μa μb) {s : Set β}
     (hs : MeasurableSet s) : MeasurePreserving f (μa.restrict (f ⁻¹' s)) (μb.restrict s) :=
-  ⟨hf.measurable, by rw [← hf.map_eq, restrict_map hf.measurable hs]⟩
+  ⟨hf.aemeasurable.restrict, by rw [← hf.map_eq, restrict_map_of_aemeasurable hf.aemeasurable hs]⟩
 
 theorem restrict_preimage_emb {f : α → β} (hf : MeasurePreserving f μa μb)
     (h₂ : MeasurableEmbedding f) (s : Set β) :
     MeasurePreserving f (μa.restrict (f ⁻¹' s)) (μb.restrict s) :=
-  ⟨hf.measurable, by rw [← hf.map_eq, h₂.restrict_map]⟩
+  ⟨hf.aemeasurable.restrict, by rw [← hf.map_eq, h₂.restrict_map]⟩
 
 theorem restrict_image_emb {f : α → β} (hf : MeasurePreserving f μa μb) (h₂ : MeasurableEmbedding f)
     (s : Set α) : MeasurePreserving f (μa.restrict s) (μb.restrict (f '' s)) := by
