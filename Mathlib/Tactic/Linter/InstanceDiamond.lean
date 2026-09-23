@@ -4,11 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Jovan Gerbscheid
 -/
 
-module
-public import Mathlib.Tactic.ApplyFun
-
-set_option linter.style.header false
-set_option linter.directoryDependency false
+import Mathlib
 
 /-! # Diamonds in instances
 This linter reports diamonds in instances
@@ -84,3 +80,5 @@ namespace Batteries.Tactic.Lint
     findDiamonds declName
 
 end Batteries.Tactic.Lint
+
+#lint only instanceDiamonds in Mathlib
